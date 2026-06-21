@@ -1,0 +1,6 @@
+@SiskyApi_HostAddress = http://localhost:5169
+
+GET {{SiskyApi_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

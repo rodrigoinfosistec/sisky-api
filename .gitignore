@@ -1,0 +1,21 @@
+# Build
+bin/
+obj/
+
+# Secrets
+src/appsettings.Development.json
+
+# dotnet
+*.user
+*.suo
+.vs/
+
+# Logs
+*.log
+
+# Docker
+.dockerignore
+
+# OS
+.DS_Store
+Thumbs.db
