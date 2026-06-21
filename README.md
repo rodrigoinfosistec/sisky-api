@@ -28,7 +28,7 @@ API RESTful desenvolvida em **ASP.NET Core 10** com **C#**, seguindo boas práti
 A API usa **JWT Bearer** com suporte a:
 
 - Login com ou sem "lembrar-me"
-- Logout com blacklist no Redis (token inválido imediatamente)
+- Logout com blacklist no Redis (token invalidado imediatamente)
 - Refresh token com rotação (cada token só pode ser usado uma vez)
 - Proteção de rotas com `[Authorize]`
 
@@ -140,21 +140,3 @@ docker compose down -v
 # Ver logs da API
 docker compose logs -f api
 ```
-
----
-
-## 🔄 Comparativo Laravel → ASP.NET
-
-| Laravel | ASP.NET |
-|---|---|
-| `StoreUserRequest` | `UserCreateDto` + `UserCreateValidator` |
-| `UserResource` | `UserResponseDto` |
-| `UserService` | `UserService` |
-| `Eloquent` | `Entity Framework Core` |
-| `php artisan migrate` | `dotnet ef database update` |
-| `Hash::make()` | `BCrypt.HashPassword()` |
-| `Hash::check()` | `BCrypt.Verify()` |
-| `auth()->user()` | `User.FindFirstValue(ClaimTypes.NameIdentifier)` |
-| `.env` | `appsettings.Development.json` |
-| `sail up -d` | `docker compose up -d` |
-
