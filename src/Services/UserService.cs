@@ -14,9 +14,15 @@ public class UserService
         _context = context;
     }
 
-    public async Task<List<UserResponseDto>> GetAll()
+    public async Task<PaginatedResponseDto<UserResponseDto>> GetAll(int page, int perPage)
     {
-        return await _context.Users
+        var total = await _context.Users.CountAsync();
+        var lastPage = (int)Math.Ceiling((double)total / perPage);
+
+        var users = await _context.Users
+            .OrderBy(u => u.Id)
+            .Skip((page - 1) * perPage)
+            .Take(perPage)
             .Select(user => new UserResponseDto
             {
                 Id = user.Id,
@@ -25,8 +31,17 @@ public class UserService
                 CreatedAt = user.CreatedAt
             })
             .ToListAsync();
-    }
 
+        return new PaginatedResponseDto<UserResponseDto>
+        {
+            Data = users,
+            Total = total,
+            Page = page,
+            PerPage = perPage,
+            LastPage = lastPage
+        };
+    }
+    
     public async Task<UserResponseDto?> GetById(int id)
     {
         var user = await _context.Users.FindAsync(id);

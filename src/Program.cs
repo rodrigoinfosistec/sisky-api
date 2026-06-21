@@ -1,3 +1,4 @@
+using SiskyApi.Data.Seeders;
 using System.Text;
 using FluentValidation;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -94,7 +95,7 @@ using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
     await db.Database.MigrateAsync();
-    await DatabaseSeeder.SeedAsync(db);
+    await DatabaseSeeder.SeedAsync(db, app.Environment);
 }
 
 app.Run();
