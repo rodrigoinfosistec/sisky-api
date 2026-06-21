@@ -19,8 +19,31 @@ builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection"))
            .UseSnakeCaseNamingConvention());
 
-builder.Services.AddSingleton<IConnectionMultiplexer>(
-    ConnectionMultiplexer.Connect(builder.Configuration.GetConnectionString("Redis")!));
+builder.Services.AddSingleton<IConnectionMultiplexer>(sp =>
+{
+    var redisConnection = builder.Configuration.GetConnectionString("Redis")!;
+    ConfigurationOptions options;
+
+    if (redisConnection.StartsWith("redis://") || redisConnection.StartsWith("rediss://"))
+    {
+        options = ConfigurationOptions.Parse(new Uri(redisConnection).ToString());
+        var uri = new Uri(redisConnection);
+        options = new ConfigurationOptions
+        {
+            EndPoints = { { uri.Host, uri.Port } },
+            Password = uri.UserInfo.Split(':').LastOrDefault(),
+            Ssl = redisConnection.StartsWith("rediss://"),
+            AbortOnConnectFail = false
+        };
+    }
+    else
+    {
+        options = ConfigurationOptions.Parse(redisConnection);
+        options.AbortOnConnectFail = false;
+    }
+
+    return ConnectionMultiplexer.Connect(options);
+});
 
 builder.Services.AddValidatorsFromAssemblyContaining<UserCreateValidator>();
 
