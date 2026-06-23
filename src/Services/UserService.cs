@@ -21,7 +21,7 @@ public class UserService
         if (!string.IsNullOrWhiteSpace(search))
         {
             query = query.Where(u => u.Name.ToLower().Contains(search.ToLower()) ||
-                                    u.Email.ToLower().Contains(search.ToLower()));
+                                     u.Email.ToLower().Contains(search.ToLower()));
         }
 
         query = sortBy switch
@@ -43,6 +43,7 @@ public class UserService
                 Id = user.Id,
                 Name = user.Name,
                 Email = user.Email,
+                AvatarUrl = user.AvatarUrl,
                 CreatedAt = user.CreatedAt
             })
             .ToListAsync();
@@ -67,6 +68,7 @@ public class UserService
             Id = user.Id,
             Name = user.Name,
             Email = user.Email,
+            AvatarUrl = user.AvatarUrl,
             CreatedAt = user.CreatedAt
         };
     }
@@ -89,6 +91,7 @@ public class UserService
             Id = user.Id,
             Name = user.Name,
             Email = user.Email,
+            AvatarUrl = user.AvatarUrl,
             CreatedAt = user.CreatedAt
         };
     }
@@ -108,6 +111,7 @@ public class UserService
             Id = user.Id,
             Name = user.Name,
             Email = user.Email,
+            AvatarUrl = user.AvatarUrl,
             CreatedAt = user.CreatedAt
         };
     }
@@ -132,5 +136,20 @@ public class UserService
         _context.Users.Remove(user);
         await _context.SaveChangesAsync();
         return true;
+    }
+
+    public async Task<string?> UpdateAvatar(int id, Stream fileStream, string fileName, string contentType, StorageService storageService)
+    {
+        var user = await _context.Users.FindAsync(id);
+        if (user is null) return null;
+
+        if (!string.IsNullOrEmpty(user.AvatarUrl))
+            await storageService.DeleteAsync(user.AvatarUrl);
+
+        var url = await storageService.UploadAsync(fileStream, fileName, contentType);
+        user.AvatarUrl = url;
+        await _context.SaveChangesAsync();
+
+        return url;
     }
 }

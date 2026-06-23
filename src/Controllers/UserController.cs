@@ -16,17 +16,20 @@ public class UserController : ControllerBase
     private readonly IValidator<UserCreateDto> _createValidator;
     private readonly IValidator<UserUpdateDto> _updateValidator;
     private readonly IValidator<UserChangePasswordDto> _changePasswordValidator;
+    private readonly StorageService _storageService;
 
     public UserController(
         UserService userService,
         IValidator<UserCreateDto> createValidator,
         IValidator<UserUpdateDto> updateValidator,
-        IValidator<UserChangePasswordDto> changePasswordValidator)
+        IValidator<UserChangePasswordDto> changePasswordValidator,
+        StorageService storageService)
     {
         _userService = userService;
         _createValidator = createValidator;
         _updateValidator = updateValidator;
         _changePasswordValidator = changePasswordValidator;
+        _storageService = storageService;
     }
 
     [HttpGet("me")]
@@ -98,5 +101,28 @@ public class UserController : ControllerBase
         var result = await _userService.Delete(id);
         if (!result) return NotFound();
         return NoContent();
+    }
+
+    [HttpPost("{id}/avatar")]
+    public async Task<IActionResult> UpdateAvatar(int id)
+    {
+        var file = Request.Form.Files.FirstOrDefault();
+
+        if (file is null || file.Length == 0)
+            return BadRequest("Arquivo inválido.");
+
+        var allowedTypes = new[] { "image/jpeg", "image/png", "image/webp" };
+        if (!allowedTypes.Contains(file.ContentType))
+            return BadRequest("Formato inválido. Use JPEG, PNG ou WebP.");
+
+        if (file.Length > 2 * 1024 * 1024)
+            return BadRequest("Arquivo muito grande. Máximo 2MB.");
+
+        using var stream = file.OpenReadStream();
+        var url = await _userService.UpdateAvatar(id, stream, file.FileName, file.ContentType, _storageService);
+
+        if (url is null) return NotFound();
+
+        return Ok(new { avatarUrl = url });
     }
 }
