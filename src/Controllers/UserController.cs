@@ -33,13 +33,12 @@ public class UserController : ControllerBase
     }
 
     [HttpGet("me")]
-    public IActionResult Me()
+    public async Task<IActionResult> Me()
     {
-        var id = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        var email = User.FindFirstValue(ClaimTypes.Email);
-        var name = User.FindFirstValue(ClaimTypes.Name);
-
-        return Ok(new { id, name, email });
+        var id = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+        var user = await _userService.GetById(id);
+        if (user is null) return NotFound();
+        return Ok(user);
     }
 
     [HttpGet]
