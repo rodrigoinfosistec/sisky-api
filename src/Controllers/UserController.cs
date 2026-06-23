@@ -43,10 +43,11 @@ public class UserController : ControllerBase
     public async Task<IActionResult> GetAll(
         [FromQuery] int page = 1,
         [FromQuery] int perPage = 15,
-        [FromQuery] string sortBy = "id",
-        [FromQuery] string sortDir = "asc")
+        [FromQuery] string sortBy = "name",
+        [FromQuery] string sortDir = "asc",
+        [FromQuery] string? search = null)
     {
-        var result = await _userService.GetAll(page, perPage, sortBy, sortDir);
+        var result = await _userService.GetAll(page, perPage, sortBy, sortDir, search);
         return Ok(result);
     }
 

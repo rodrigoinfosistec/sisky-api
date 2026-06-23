@@ -14,9 +14,15 @@ public class UserService
         _context = context;
     }
 
-    public async Task<PaginatedResponseDto<UserResponseDto>> GetAll(int page, int perPage, string sortBy = "id", string sortDir = "asc")
+    public async Task<PaginatedResponseDto<UserResponseDto>> GetAll(int page, int perPage, string sortBy = "name", string sortDir = "asc", string? search = null)
     {
         var query = _context.Users.AsQueryable();
+
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            query = query.Where(u => u.Name.ToLower().Contains(search.ToLower()) ||
+                                    u.Email.ToLower().Contains(search.ToLower()));
+        }
 
         query = sortBy switch
         {
@@ -50,7 +56,7 @@ public class UserService
             LastPage = lastPage
         };
     }
-    
+
     public async Task<UserResponseDto?> GetById(int id)
     {
         var user = await _context.Users.FindAsync(id);
