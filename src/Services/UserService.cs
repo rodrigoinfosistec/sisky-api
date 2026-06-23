@@ -14,13 +14,22 @@ public class UserService
         _context = context;
     }
 
-    public async Task<PaginatedResponseDto<UserResponseDto>> GetAll(int page, int perPage)
+    public async Task<PaginatedResponseDto<UserResponseDto>> GetAll(int page, int perPage, string sortBy = "id", string sortDir = "asc")
     {
-        var total = await _context.Users.CountAsync();
+        var query = _context.Users.AsQueryable();
+
+        query = sortBy switch
+        {
+            "name" => sortDir == "desc" ? query.OrderByDescending(u => u.Name) : query.OrderBy(u => u.Name),
+            "email" => sortDir == "desc" ? query.OrderByDescending(u => u.Email) : query.OrderBy(u => u.Email),
+            "createdAt" => sortDir == "desc" ? query.OrderByDescending(u => u.CreatedAt) : query.OrderBy(u => u.CreatedAt),
+            _ => sortDir == "desc" ? query.OrderByDescending(u => u.Id) : query.OrderBy(u => u.Id)
+        };
+
+        var total = await query.CountAsync();
         var lastPage = (int)Math.Ceiling((double)total / perPage);
 
-        var users = await _context.Users
-            .OrderBy(u => u.Id)
+        var users = await query
             .Skip((page - 1) * perPage)
             .Take(perPage)
             .Select(user => new UserResponseDto
