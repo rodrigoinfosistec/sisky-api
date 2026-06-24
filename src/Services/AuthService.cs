@@ -193,4 +193,37 @@ public class AuthService
 
         return new JwtSecurityTokenHandler().WriteToken(token);
     }
+
+    public async Task<bool> ForgotPassword(string email, string frontendUrl, EmailService emailService)
+    {
+        var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == email);
+        if (user is null) return true; // não revela se o email existe
+
+        var token = Guid.NewGuid().ToString();
+        await _redis.StringSetAsync(
+            $"password_reset:{token}",
+            user.Id.ToString(),
+            TimeSpan.FromHours(1));
+
+        var resetLink = $"{frontendUrl}/reset-password?token={token}";
+        await emailService.SendPasswordResetAsync(user.Email, user.Name, resetLink);
+
+        return true;
+    }
+
+    public async Task<bool> ResetPassword(ResetPasswordDto dto)
+    {
+        var userId = await _redis.StringGetAsync($"password_reset:{dto.Token}");
+        if (userId.IsNullOrEmpty) return false;
+
+        var user = await _context.Users.FindAsync(int.Parse(userId!));
+        if (user is null) return false;
+
+        user.Password = BCrypt.Net.BCrypt.HashPassword(dto.NewPassword);
+        await _context.SaveChangesAsync();
+
+        await _redis.KeyDeleteAsync($"password_reset:{dto.Token}");
+
+        return true;
+    }
 }

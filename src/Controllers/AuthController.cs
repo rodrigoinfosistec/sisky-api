@@ -13,11 +13,25 @@ public class AuthController : ControllerBase
 {
     private readonly AuthService _authService;
     private readonly IValidator<LoginDto> _loginValidator;
+    private readonly IValidator<ForgotPasswordDto> _forgotPasswordValidator;
+    private readonly IValidator<ResetPasswordDto> _resetPasswordValidator;
+    private readonly IConfiguration _configuration;
+    private readonly EmailService _emailService;
 
-    public AuthController(AuthService authService, IValidator<LoginDto> loginValidator)
+    public AuthController(
+        AuthService authService,
+        IValidator<LoginDto> loginValidator,
+        IValidator<ForgotPasswordDto> forgotPasswordValidator,
+        IValidator<ResetPasswordDto> resetPasswordValidator,
+        IConfiguration configuration,
+        EmailService emailService)
     {
         _authService = authService;
         _loginValidator = loginValidator;
+        _forgotPasswordValidator = forgotPasswordValidator;
+        _resetPasswordValidator = resetPasswordValidator;
+        _configuration = configuration;
+        _emailService = emailService;
     }
 
     [HttpPost("login")]
@@ -80,5 +94,29 @@ public class AuthController : ControllerBase
         var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
         await _authService.RevokeAllSessions(userId, token);
         return NoContent();
+    }
+
+    [HttpPost("forgot-password")]
+    public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordDto dto)
+    {
+        var validation = await _forgotPasswordValidator.ValidateAsync(dto);
+        if (!validation.IsValid) return BadRequest(validation.Errors.Select(e => e.ErrorMessage));
+
+        var frontendUrl = _configuration["App:FrontendUrl"]!;
+        await _authService.ForgotPassword(dto.Email, frontendUrl, _emailService);
+
+        return Ok("Se o e-mail estiver cadastrado, você receberá as instruções em breve.");
+    }
+
+    [HttpPost("reset-password")]
+    public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordDto dto)
+    {
+        var validation = await _resetPasswordValidator.ValidateAsync(dto);
+        if (!validation.IsValid) return BadRequest(validation.Errors.Select(e => e.ErrorMessage));
+
+        var result = await _authService.ResetPassword(dto);
+        if (!result) return BadRequest("Token inválido ou expirado.");
+
+        return Ok("Senha redefinida com sucesso.");
     }
 }
