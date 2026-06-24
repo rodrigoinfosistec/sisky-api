@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using SiskyApi.Data;
@@ -11,9 +12,11 @@ using SiskyApi.Data;
 namespace SiskyApi.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260624233951_AddMultitenancy")]
+    partial class AddMultitenancy
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -298,10 +301,6 @@ namespace SiskyApi.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
-                    b.Property<bool>("Active")
-                        .HasColumnType("boolean")
-                        .HasColumnName("active");
-
                     b.Property<string>("AvatarUrl")
                         .HasColumnType("text")
                         .HasColumnName("avatar_url");
@@ -325,19 +324,12 @@ namespace SiskyApi.Migrations
                         .HasColumnType("text")
                         .HasColumnName("password");
 
-                    b.Property<int?>("TenantId")
-                        .HasColumnType("integer")
-                        .HasColumnName("tenant_id");
-
                     b.HasKey("Id")
                         .HasName("pk_users");
 
                     b.HasIndex("Email")
                         .IsUnique()
                         .HasDatabaseName("ix_users_email");
-
-                    b.HasIndex("TenantId")
-                        .HasDatabaseName("ix_users_tenant_id");
 
                     b.ToTable("users", (string)null);
                 });
@@ -498,16 +490,6 @@ namespace SiskyApi.Migrations
                     b.Navigation("Tenant");
                 });
 
-            modelBuilder.Entity("SiskyApi.Models.User", b =>
-                {
-                    b.HasOne("SiskyApi.Models.Tenant", "Tenant")
-                        .WithMany()
-                        .HasForeignKey("TenantId")
-                        .HasConstraintName("fk_users_tenants_tenant_id");
-
-                    b.Navigation("Tenant");
-                });
-
             modelBuilder.Entity("SiskyApi.Models.UserCompany", b =>
                 {
                     b.HasOne("SiskyApi.Models.Company", "Company")
@@ -518,7 +500,7 @@ namespace SiskyApi.Migrations
                         .HasConstraintName("fk_user_companies_companies_company_id");
 
                     b.HasOne("SiskyApi.Models.User", "User")
-                        .WithMany("UserCompanies")
+                        .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
@@ -546,7 +528,7 @@ namespace SiskyApi.Migrations
                         .HasConstraintName("fk_user_roles_roles_role_id");
 
                     b.HasOne("SiskyApi.Models.User", "User")
-                        .WithMany("UserRoles")
+                        .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
@@ -596,13 +578,6 @@ namespace SiskyApi.Migrations
                     b.Navigation("Roles");
 
                     b.Navigation("TenantModules");
-                });
-
-            modelBuilder.Entity("SiskyApi.Models.User", b =>
-                {
-                    b.Navigation("UserCompanies");
-
-                    b.Navigation("UserRoles");
                 });
 #pragma warning restore 612, 618
         }
