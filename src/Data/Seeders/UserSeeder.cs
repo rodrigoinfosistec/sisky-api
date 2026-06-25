@@ -16,6 +16,7 @@ public static class UserSeeder
                 Name = "Rodrigo",
                 Email = "rodrigo@sisky.com.br",
                 Password = BCrypt.Net.BCrypt.HashPassword("password"),
+                Active = true,
                 CreatedAt = DateTime.UtcNow
             }
         };
@@ -26,6 +27,7 @@ public static class UserSeeder
                 .RuleFor(u => u.Name, f => f.Name.FullName())
                 .RuleFor(u => u.Email, (f, u) => f.Internet.Email(u.Name))
                 .RuleFor(u => u.Password, f => BCrypt.Net.BCrypt.HashPassword("password"))
+                .RuleFor(u => u.Active, f => true)
                 .RuleFor(u => u.CreatedAt, f => f.Date.Past(1).ToUniversalTime());
 
             users.AddRange(faker.Generate(49));
