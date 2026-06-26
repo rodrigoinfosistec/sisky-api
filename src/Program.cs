@@ -71,10 +71,12 @@ builder.Services.AddCors(options =>
     options.AddPolicy("AllowFrontend", policy =>
     {
         policy.WithOrigins(
-                "http://localhost:3000",
-                "https://sisky-web.vercel.app")
-              .AllowAnyHeader()
-              .AllowAnyMethod();
+            "http://localhost:3000",
+            "https://sisky.com.br",
+            "https://draxel.sisky.com.br",
+            "https://sisky-web.vercel.app")
+        .AllowAnyHeader()
+        .AllowAnyMethod();
     });
 });
 
