@@ -141,4 +141,12 @@ public class UserController : ControllerBase
 
         return Ok(new { avatarUrl = url });
     }
+
+    [HttpGet("companies")]
+    public async Task<IActionResult> GetCompanies()
+    {
+        var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+        var companies = await _userService.GetUserCompanies(userId);
+        return Ok(companies);
+    }
 }

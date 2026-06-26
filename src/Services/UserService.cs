@@ -152,4 +152,19 @@ public class UserService
 
         return url;
     }
+
+    public async Task<List<object>> GetUserCompanies(int userId)
+    {
+        return await _context.UserCompanies
+            .Include(uc => uc.Company)
+            .Where(uc => uc.UserId == userId && uc.Company.Active)
+            .Select(uc => (object)new
+            {
+                uc.Company.Id,
+                uc.Company.Name,
+                uc.Company.PrimaryColor,
+                uc.IsDefault
+            })
+            .ToListAsync();
+    }
 }
