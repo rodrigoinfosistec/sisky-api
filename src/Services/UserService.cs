@@ -8,15 +8,26 @@ namespace SiskyApi.Services;
 public class UserService
 {
     private readonly AppDbContext _context;
+    private readonly TenantContext _tenantContext;
 
-    public UserService(AppDbContext context)
+    public UserService(AppDbContext context, TenantContext tenantContext)
     {
         _context = context;
+        _tenantContext = tenantContext;
     }
 
     public async Task<PaginatedResponseDto<UserResponseDto>> GetAll(int page, int perPage, string sortBy = "name", string sortDir = "asc", string? search = null)
     {
         var query = _context.Users.AsQueryable();
+
+        // Filtra por tenant se houver contexto
+        if (_tenantContext.HasTenant)
+        {
+            query = query.Where(u =>
+                _context.UserCompanies
+                    .Include(uc => uc.Company)
+                    .Any(uc => uc.UserId == u.Id && uc.Company.TenantId == _tenantContext.TenantId));
+        }
 
         if (!string.IsNullOrWhiteSpace(search))
         {
@@ -80,6 +91,8 @@ public class UserService
             Name = dto.Name,
             Email = dto.Email,
             Password = BCrypt.Net.BCrypt.HashPassword(dto.Password),
+            TenantId = _tenantContext.TenantId,
+            Active = true,
             CreatedAt = DateTime.UtcNow
         };
 

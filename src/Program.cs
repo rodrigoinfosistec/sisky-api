@@ -87,6 +87,8 @@ builder.Services.AddScoped<TenantContext>(sp =>
     return context;
 });
 
+builder.Services.AddHttpContextAccessor();
+
 var app = builder.Build();
 
 if (app.Environment.IsDevelopment())
