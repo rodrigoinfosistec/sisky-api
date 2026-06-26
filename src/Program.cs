@@ -78,6 +78,13 @@ builder.Services.AddCors(options =>
     });
 });
 
+builder.Services.AddScoped<TenantContext>(sp =>
+{
+    var context = new TenantContext();
+    context.SetFromHttpContext(sp.GetRequiredService<IHttpContextAccessor>());
+    return context;
+});
+
 var app = builder.Build();
 
 if (app.Environment.IsDevelopment())
@@ -89,6 +96,7 @@ app.UseCors("AllowFrontend");
 
 app.UseHttpsRedirection();
 app.UseMiddleware<SiskyApi.Middlewares.TokenBlacklistMiddleware>();
+app.UseMiddleware<SiskyApi.Middlewares.TenantMiddleware>();
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();

@@ -38,7 +38,24 @@ public class UserController : ControllerBase
         var id = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
         var user = await _userService.GetById(id);
         if (user is null) return NotFound();
-        return Ok(user);
+
+        var tenantId = User.FindFirstValue("tenant_id");
+        var companyId = User.FindFirstValue("company_id");
+        var roles = User.FindAll(ClaimTypes.Role).Select(c => c.Value).ToList();
+        var permissions = User.FindAll("permission").Select(c => c.Value).ToList();
+
+        return Ok(new
+        {
+            user.Id,
+            user.Name,
+            user.Email,
+            user.AvatarUrl,
+            user.CreatedAt,
+            TenantId = tenantId != null ? int.Parse(tenantId) : (int?)null,
+            CompanyId = companyId != null ? int.Parse(companyId) : (int?)null,
+            Roles = roles,
+            Permissions = permissions
+        });
     }
 
     [HttpGet]

@@ -14,7 +14,7 @@ public static class UserSeeder
             new User
             {
                 Name = "Rodrigo",
-                Email = "rodrigo@sisky.com.br",
+                Email = "rodrigo.infosistec@gmail.com",
                 Password = BCrypt.Net.BCrypt.HashPassword("password"),
                 Active = true,
                 CreatedAt = DateTime.UtcNow

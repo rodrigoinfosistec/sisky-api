@@ -119,4 +119,14 @@ public class AuthController : ControllerBase
 
         return Ok("Senha redefinida com sucesso.");
     }
+
+    [Authorize]
+    [HttpPost("switch-company")]
+    public async Task<IActionResult> SwitchCompany([FromBody] int companyId)
+    {
+        var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+        var token = await _authService.SwitchCompany(userId, companyId);
+        if (token is null) return Forbid();
+        return Ok(new { token });
+    }
 }

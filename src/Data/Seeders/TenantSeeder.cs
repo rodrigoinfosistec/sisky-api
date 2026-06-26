@@ -89,7 +89,7 @@ public static class TenantSeeder
         await context.SaveChangesAsync();
 
         // Associa o usuário Rodrigo às duas empresas
-        var rodrigo = context.Users.FirstOrDefault(u => u.Email == "rodrigo@sisky.com.br");
+        var rodrigo = context.Users.FirstOrDefault(u => u.Email == "rodrigo.infosistec@gmail.com");
         if (rodrigo != null)
         {
             await context.UserCompanies.AddRangeAsync(

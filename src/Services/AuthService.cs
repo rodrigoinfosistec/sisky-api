@@ -34,11 +34,13 @@ public class AuthService
 
     public async Task<object?> Login(LoginDto dto, string ipAddress, string userAgent)
     {
-        var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == dto.Email);
+        var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == dto.Email && u.Active);
         if (user is null) return null;
         if (!BCrypt.Net.BCrypt.Verify(dto.Password, user.Password)) return null;
 
-        var token = GenerateJwtToken(user.Id, user.Email, user.Name);
+        var (companyId, tenantId, roles, permissions) = await GetUserCompanyContext(user.Id);
+
+        var token = GenerateJwtToken(user.Id, user.Email, user.Name, tenantId, companyId, roles, permissions);
         var expiresAt = DateTime.UtcNow.AddHours(double.Parse(_configuration["Jwt:ExpiresInHours"]!));
 
         var session = new SessionInfo
@@ -168,17 +170,64 @@ public class AuthService
         }
     }
 
-    private string GenerateJwtToken(int id, string email, string name)
+    private async Task<(int? companyId, int? tenantId, List<string> roles, List<string> permissions)> GetUserCompanyContext(int userId, int? companyId = null)
+    {
+        var userCompany = companyId.HasValue
+            ? await _context.UserCompanies
+                .Include(uc => uc.Company)
+                .FirstOrDefaultAsync(uc => uc.UserId == userId && uc.CompanyId == companyId)
+            : await _context.UserCompanies
+                .Include(uc => uc.Company)
+                .FirstOrDefaultAsync(uc => uc.UserId == userId && uc.IsDefault)
+              ?? await _context.UserCompanies
+                .Include(uc => uc.Company)
+                .FirstOrDefaultAsync(uc => uc.UserId == userId);
+
+        if (userCompany is null)
+            return (null, null, new List<string>(), new List<string>());
+
+        var userRoles = await _context.UserRoles
+            .Include(ur => ur.Role)
+                .ThenInclude(r => r.RolePermissions)
+                    .ThenInclude(rp => rp.Permission)
+            .Where(ur => ur.UserId == userId && ur.CompanyId == userCompany.CompanyId)
+            .ToListAsync();
+
+        var roles = userRoles.Select(ur => ur.Role.Name).Distinct().ToList();
+        var permissions = userRoles
+            .SelectMany(ur => ur.Role.RolePermissions)
+            .Select(rp => rp.Permission.Slug)
+            .Distinct()
+            .ToList();
+
+        return (userCompany.CompanyId, userCompany.Company.TenantId, roles, permissions);
+    }
+
+    private string GenerateJwtToken(int id, string email, string name, int? tenantId = null, int? companyId = null, List<string>? roles = null, List<string>? permissions = null)
     {
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_configuration["Jwt:Key"]!));
         var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
-        var claims = new[]
-        {
-            new Claim(ClaimTypes.NameIdentifier, id.ToString()),
-            new Claim(ClaimTypes.Email, email),
-            new Claim(ClaimTypes.Name, name)
-        };
+        var claims = new List<Claim>
+    {
+        new Claim(ClaimTypes.NameIdentifier, id.ToString()),
+        new Claim(ClaimTypes.Email, email),
+        new Claim(ClaimTypes.Name, name),
+    };
+
+        if (tenantId.HasValue)
+            claims.Add(new Claim("tenant_id", tenantId.Value.ToString()));
+
+        if (companyId.HasValue)
+            claims.Add(new Claim("company_id", companyId.Value.ToString()));
+
+        if (roles != null)
+            foreach (var role in roles)
+                claims.Add(new Claim(ClaimTypes.Role, role));
+
+        if (permissions != null)
+            foreach (var permission in permissions)
+                claims.Add(new Claim("permission", permission));
 
         var expiration = DateTime.UtcNow.AddHours(
             double.Parse(_configuration["Jwt:ExpiresInHours"]!));
@@ -225,5 +274,21 @@ public class AuthService
         await _redis.KeyDeleteAsync($"password_reset:{dto.Token}");
 
         return true;
+    }
+
+    public async Task<string?> SwitchCompany(int userId, int companyId)
+    {
+        var userCompany = await _context.UserCompanies
+            .Include(uc => uc.Company)
+            .FirstOrDefaultAsync(uc => uc.UserId == userId && uc.CompanyId == companyId);
+
+        if (userCompany is null) return null;
+
+        var user = await _context.Users.FindAsync(userId);
+        if (user is null) return null;
+
+        var (cId, tenantId, roles, permissions) = await GetUserCompanyContext(userId, companyId);
+
+        return GenerateJwtToken(user.Id, user.Email, user.Name, tenantId, cId, roles, permissions);
     }
 }
