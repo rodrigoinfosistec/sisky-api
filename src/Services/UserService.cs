@@ -99,6 +99,19 @@ public class UserService
         _context.Users.Add(user);
         await _context.SaveChangesAsync();
 
+        // Associa à empresa atual do contexto
+        if (_tenantContext.CompanyId.HasValue)
+        {
+            _context.UserCompanies.Add(new UserCompany
+            {
+                UserId = user.Id,
+                CompanyId = _tenantContext.CompanyId.Value,
+                IsDefault = true,
+                CreatedAt = DateTime.UtcNow
+            });
+            await _context.SaveChangesAsync();
+        }
+
         return new UserResponseDto
         {
             Id = user.Id,
