@@ -40,8 +40,6 @@ public class AuthService
 
         var (companyId, tenantId, roles, permissions) = await GetUserCompanyContext(user.Id);
 
-        Console.WriteLine($"[DEBUG LOGIN] userId={user.Id} companyId={companyId} tenantId={tenantId} roles={roles.Count} permissions={permissions.Count}");
-
         var token = GenerateJwtToken(user.Id, user.Email, user.Name, tenantId, companyId, roles, permissions);
         var expiresAt = DateTime.UtcNow.AddHours(double.Parse(_configuration["Jwt:ExpiresInHours"]!));
 
