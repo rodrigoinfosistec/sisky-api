@@ -157,4 +157,44 @@ public class UserController : ControllerBase
         var companies = await _userService.GetUserCompanies(userId);
         return Ok(companies);
     }
+
+    [HttpPost("{id}/companies")]
+    public async Task<IActionResult> AddCompany(int id, [FromBody] AddUserCompanyDto dto)
+    {
+        var result = await _userService.AddCompany(id, dto.CompanyId);
+        if (!result) return BadRequest("Empresa já associada ou não encontrada.");
+        return NoContent();
+    }
+
+    [HttpDelete("{id}/companies/{companyId}")]
+    public async Task<IActionResult> RemoveCompany(int id, int companyId)
+    {
+        var result = await _userService.RemoveCompany(id, companyId);
+        if (!result) return BadRequest("Empresa não encontrada ou é a empresa padrão.");
+        return NoContent();
+    }
+
+    [HttpPatch("{id}/companies/{companyId}/default")]
+    public async Task<IActionResult> SetDefaultCompany(int id, int companyId)
+    {
+        var result = await _userService.SetDefaultCompany(id, companyId);
+        if (!result) return NotFound();
+        return NoContent();
+    }
+
+    [HttpPost("{id}/companies/{companyId}/roles")]
+    public async Task<IActionResult> AddRole(int id, int companyId, [FromBody] AddUserRoleDto dto)
+    {
+        var result = await _userService.AddRole(id, companyId, dto.RoleId);
+        if (!result) return BadRequest("Role já atribuída ou não encontrada.");
+        return NoContent();
+    }
+
+    [HttpDelete("{id}/companies/{companyId}/roles/{roleId}")]
+    public async Task<IActionResult> RemoveRole(int id, int companyId, int roleId)
+    {
+        var result = await _userService.RemoveRole(id, companyId, roleId);
+        if (!result) return NotFound();
+        return NoContent();
+    }
 }

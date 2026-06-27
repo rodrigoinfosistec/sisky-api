@@ -295,4 +295,87 @@ public class UserService
             })
             .ToListAsync();
     }
+
+    public async Task<bool> AddCompany(int userId, int companyId)
+    {
+        var exists = await _context.UserCompanies
+            .AnyAsync(uc => uc.UserId == userId && uc.CompanyId == companyId);
+        if (exists) return false;
+
+        _context.UserCompanies.Add(new UserCompany
+        {
+            UserId = userId,
+            CompanyId = companyId,
+            IsDefault = false,
+            CreatedAt = DateTime.UtcNow
+        });
+        await _context.SaveChangesAsync();
+        await _auditService.LogAsync(AuditActions.Created, "UserCompany", userId,
+            newValues: new { CompanyId = companyId });
+        return true;
+    }
+
+    public async Task<bool> RemoveCompany(int userId, int companyId)
+    {
+        var userCompany = await _context.UserCompanies
+            .FirstOrDefaultAsync(uc => uc.UserId == userId && uc.CompanyId == companyId);
+        if (userCompany is null) return false;
+        if (userCompany.IsDefault) return false;
+
+        _context.UserCompanies.Remove(userCompany);
+        await _context.SaveChangesAsync();
+        await _auditService.LogAsync(AuditActions.Deleted, "UserCompany", userId,
+            oldValues: new { CompanyId = companyId });
+        return true;
+    }
+
+    public async Task<bool> SetDefaultCompany(int userId, int companyId)
+    {
+        var userCompanies = await _context.UserCompanies
+            .Where(uc => uc.UserId == userId)
+            .ToListAsync();
+
+        var target = userCompanies.FirstOrDefault(uc => uc.CompanyId == companyId);
+        if (target is null) return false;
+
+        foreach (var uc in userCompanies)
+            uc.IsDefault = uc.CompanyId == companyId;
+
+        await _context.SaveChangesAsync();
+        await _auditService.LogAsync(AuditActions.Updated, "UserCompany", userId,
+            newValues: new { DefaultCompanyId = companyId });
+        return true;
+    }
+
+    public async Task<bool> AddRole(int userId, int companyId, int roleId)
+    {
+        var exists = await _context.UserRoles
+            .AnyAsync(ur => ur.UserId == userId && ur.CompanyId == companyId && ur.RoleId == roleId);
+        if (exists) return false;
+
+        _context.UserRoles.Add(new UserRole
+        {
+            UserId = userId,
+            CompanyId = companyId,
+            RoleId = roleId,
+            CreatedAt = DateTime.UtcNow
+        });
+        await _context.SaveChangesAsync();
+        await _auditService.LogAsync(AuditActions.Created, "UserRole", userId,
+            newValues: new { CompanyId = companyId, RoleId = roleId });
+        return true;
+    }
+
+    public async Task<bool> RemoveRole(int userId, int companyId, int roleId)
+    {
+        var userRole = await _context.UserRoles
+            .FirstOrDefaultAsync(ur => ur.UserId == userId && ur.CompanyId == companyId && ur.RoleId == roleId);
+        if (userRole is null) return false;
+
+        _context.UserRoles.Remove(userRole);
+        await _context.SaveChangesAsync();
+        await _auditService.LogAsync(AuditActions.Deleted, "UserRole", userId,
+            oldValues: new { CompanyId = companyId, RoleId = roleId });
+        return true;
+    }
 }
