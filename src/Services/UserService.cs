@@ -85,6 +85,70 @@ public class UserService
         };
     }
 
+    public async Task<object?> GetUserDetails(int userId)
+    {
+        var user = await _context.Users.FindAsync(userId);
+        if (user is null) return null;
+
+        var companies = await _context.UserCompanies
+            .Include(uc => uc.Company)
+            .Where(uc => uc.UserId == userId)
+            .Select(uc => new
+            {
+                uc.Company.Id,
+                uc.Company.Name,
+                uc.Company.PrimaryColor,
+                uc.IsDefault
+            })
+            .ToListAsync();
+
+        var userRoles = await _context.UserRoles
+            .Include(ur => ur.Role)
+            .Where(ur => ur.UserId == userId)
+            .Select(ur => new
+            {
+                ur.CompanyId,
+                ur.Role.Id,
+                ur.Role.Name,
+                ur.Role.IsSystem
+            })
+            .ToListAsync();
+
+        var tenantRoles = await _context.Roles
+            .Where(r => r.TenantId == _tenantContext.TenantId)
+            .Select(r => new
+            {
+                r.Id,
+                r.Name,
+                r.IsSystem
+            })
+            .ToListAsync();
+
+        var tenantCompanies = await _context.Companies
+            .Where(c => c.TenantId == _tenantContext.TenantId && c.Active)
+            .Select(c => new
+            {
+                c.Id,
+                c.Name,
+                c.PrimaryColor
+            })
+            .ToListAsync();
+
+        return new
+        {
+            user.Id,
+            user.Name,
+            user.Email,
+            user.AvatarUrl,
+            user.Active,
+            user.CreatedAt,
+            Companies = companies,
+            UserRoles = userRoles,
+            TenantRoles = tenantRoles,
+            TenantCompanies = tenantCompanies
+        };
+    }
+
     public async Task<UserResponseDto> Create(UserCreateDto dto)
     {
         var user = new User

@@ -81,12 +81,7 @@ builder.Services.AddCors(options =>
     });
 });
 
-builder.Services.AddScoped<TenantContext>(sp =>
-{
-    var context = new TenantContext();
-    context.SetFromHttpContext(sp.GetRequiredService<IHttpContextAccessor>());
-    return context;
-});
+builder.Services.AddScoped<TenantContext>();
 
 builder.Services.AddHttpContextAccessor();
 

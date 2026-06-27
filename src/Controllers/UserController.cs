@@ -78,6 +78,14 @@ public class UserController : ControllerBase
         return Ok(user);
     }
 
+    [HttpGet("{id}/details")]
+    public async Task<IActionResult> GetDetails(int id)
+    {
+        var details = await _userService.GetUserDetails(id);
+        if (details is null) return NotFound();
+        return Ok(details);
+    }
+
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] UserCreateDto dto)
     {
