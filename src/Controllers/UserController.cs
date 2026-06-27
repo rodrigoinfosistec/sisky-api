@@ -197,4 +197,13 @@ public class UserController : ControllerBase
         if (!result) return NotFound();
         return NoContent();
     }
+
+    [HttpPatch("{id}/toggle-active")]
+    public async Task<IActionResult> ToggleActive(int id)
+    {
+        var currentUserId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+        var (success, error, data) = await _userService.ToggleActive(id, currentUserId);
+        if (!success) return BadRequest(error);
+        return Ok(data);
+    }
 }

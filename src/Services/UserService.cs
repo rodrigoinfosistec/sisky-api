@@ -378,4 +378,23 @@ public class UserService
             oldValues: new { CompanyId = companyId, RoleId = roleId });
         return true;
     }
+
+    public async Task<(bool Success, string? Error, object? Data)> ToggleActive(int id, int currentUserId)
+    {
+        var user = await _context.Users.FindAsync(id);
+        if (user is null) return (false, "Usuário não encontrado.", null);
+        if (user.Id == currentUserId) return (false, "Você não pode inativar sua própria conta.", null);
+
+        user.Active = !user.Active;
+        await _context.SaveChangesAsync();
+
+        await _auditService.LogAsync(
+            user.Active ? AuditActions.Activated : AuditActions.Deactivated,
+            "User",
+            user.Id,
+            newValues: new { user.Active }
+        );
+
+        return (true, null, new { user.Id, user.Active });
+    }
 }

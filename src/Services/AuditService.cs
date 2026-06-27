@@ -58,4 +58,6 @@ public static class AuditActions
     public const string PasswordReset = "password_reset";
     public const string AvatarUpdated = "avatar_updated";
     public const string SwitchedCompany = "switched_company";
+    public const string Activated = "activated";
+    public const string Deactivated = "deactivated";
 }
