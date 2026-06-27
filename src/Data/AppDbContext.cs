@@ -21,6 +21,7 @@ public class AppDbContext : DbContext
     public DbSet<RolePermission> RolePermissions { get; set; }
     public DbSet<UserRole> UserRoles { get; set; }
     public DbSet<AuditLog> AuditLogs { get; set; }
+    public DbSet<Department> Departments { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -59,6 +60,10 @@ public class AppDbContext : DbContext
         // Permission slug único por módulo
         modelBuilder.Entity<Permission>()
             .HasIndex(p => new { p.ModuleId, p.Slug })
+            .IsUnique();
+
+        modelBuilder.Entity<Department>()
+            .HasIndex(d => new { d.TenantId, d.Name })
             .IsUnique();
     }
 }
