@@ -18,7 +18,7 @@ public class UserService
         _auditService = auditService;
     }
 
-    public async Task<PaginatedResponseDto<UserResponseDto>> GetAll(int page, int perPage, string sortBy = "name", string sortDir = "asc", string? search = null)
+    public async Task<PaginatedResponseDto<UserResponseDto>> GetAll(int page, int perPage, string sortBy = "name", string sortDir = "asc", string? search = null, bool? active = null)
     {
         var query = _context.Users.AsQueryable();
 
@@ -29,6 +29,9 @@ public class UserService
                     .Include(uc => uc.Company)
                     .Any(uc => uc.UserId == u.Id && uc.Company.TenantId == _tenantContext.TenantId));
         }
+
+        if (active.HasValue)
+            query = query.Where(u => u.Active == active.Value);
 
         if (!string.IsNullOrWhiteSpace(search))
         {
@@ -56,6 +59,7 @@ public class UserService
                 Name = user.Name,
                 Email = user.Email,
                 AvatarUrl = user.AvatarUrl,
+                Active = user.Active,
                 CreatedAt = user.CreatedAt
             })
             .ToListAsync();

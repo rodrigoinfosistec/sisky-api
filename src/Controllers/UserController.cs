@@ -60,13 +60,14 @@ public class UserController : ControllerBase
 
     [HttpGet]
     public async Task<IActionResult> GetAll(
-        [FromQuery] int page = 1,
-        [FromQuery] int perPage = 15,
-        [FromQuery] string sortBy = "name",
-        [FromQuery] string sortDir = "asc",
-        [FromQuery] string? search = null)
+    [FromQuery] int page = 1,
+    [FromQuery] int perPage = 15,
+    [FromQuery] string sortBy = "name",
+    [FromQuery] string sortDir = "asc",
+    [FromQuery] string? search = null,
+    [FromQuery] bool? active = null)
     {
-        var result = await _userService.GetAll(page, perPage, sortBy, sortDir, search);
+        var result = await _userService.GetAll(page, perPage, sortBy, sortDir, search, active);
         return Ok(result);
     }
 
