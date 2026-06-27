@@ -24,12 +24,14 @@ public class AuthService
     private readonly AppDbContext _context;
     private readonly IConfiguration _configuration;
     private readonly IDatabase _redis;
+    private readonly AuditService _auditService;
 
-    public AuthService(AppDbContext context, IConfiguration configuration, IConnectionMultiplexer redis)
+    public AuthService(AppDbContext context, IConfiguration configuration, IConnectionMultiplexer redis, AuditService auditService)
     {
         _context = context;
         _configuration = configuration;
         _redis = redis.GetDatabase();
+        _auditService = auditService;
     }
 
     public async Task<object?> Login(LoginDto dto, string ipAddress, string userAgent)
@@ -56,6 +58,15 @@ public class AuthService
             $"session:{user.Id}:{token[^10..]}",
             JsonSerializer.Serialize(session),
             expiresAt - DateTime.UtcNow);
+
+        await _auditService.LogAsync(
+            AuditActions.LoggedIn,
+            "User",
+            user.Id,
+            tenantIdOverride: tenantId,
+            companyIdOverride: companyId,
+            userNameOverride: user.Name
+        );
 
         if (dto.RememberMe)
         {
@@ -97,6 +108,7 @@ public class AuthService
         var expiration = jwt.ValidTo - DateTime.UtcNow;
 
         await _redis.StringSetAsync($"blacklist:{token}", "true", expiration);
+        await _auditService.LogAsync(AuditActions.LoggedOut, "User", userId);
         await _redis.KeyDeleteAsync($"session:{userId}:{token[^10..]}");
     }
 
@@ -270,6 +282,8 @@ public class AuthService
         user.Password = BCrypt.Net.BCrypt.HashPassword(dto.NewPassword);
         await _context.SaveChangesAsync();
 
+        await _auditService.LogAsync(AuditActions.PasswordReset, "User", user.Id);
+
         await _redis.KeyDeleteAsync($"password_reset:{dto.Token}");
 
         return true;
@@ -287,6 +301,8 @@ public class AuthService
         if (user is null) return null;
 
         var (cId, tenantId, roles, permissions) = await GetUserCompanyContext(userId, companyId);
+
+        await _auditService.LogAsync(AuditActions.SwitchedCompany, "User", userId, newValues: new { CompanyId = cId });
 
         return GenerateJwtToken(user.Id, user.Email, user.Name, tenantId, cId, roles, permissions);
     }

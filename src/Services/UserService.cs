@@ -9,18 +9,19 @@ public class UserService
 {
     private readonly AppDbContext _context;
     private readonly TenantContext _tenantContext;
+    private readonly AuditService _auditService;
 
-    public UserService(AppDbContext context, TenantContext tenantContext)
+    public UserService(AppDbContext context, TenantContext tenantContext, AuditService auditService)
     {
         _context = context;
         _tenantContext = tenantContext;
+        _auditService = auditService;
     }
 
     public async Task<PaginatedResponseDto<UserResponseDto>> GetAll(int page, int perPage, string sortBy = "name", string sortDir = "asc", string? search = null)
     {
         var query = _context.Users.AsQueryable();
 
-        // Filtra por tenant se houver contexto
         if (_tenantContext.HasTenant)
         {
             query = query.Where(u =>
@@ -99,7 +100,6 @@ public class UserService
         _context.Users.Add(user);
         await _context.SaveChangesAsync();
 
-        // Associa à empresa atual do contexto
         if (_tenantContext.CompanyId.HasValue)
         {
             _context.UserCompanies.Add(new UserCompany
@@ -111,6 +111,13 @@ public class UserService
             });
             await _context.SaveChangesAsync();
         }
+
+        await _auditService.LogAsync(
+            AuditActions.Created,
+            "User",
+            user.Id,
+            newValues: new { user.Name, user.Email }
+        );
 
         return new UserResponseDto
         {
@@ -127,10 +134,20 @@ public class UserService
         var user = await _context.Users.FindAsync(id);
         if (user is null) return null;
 
+        var oldValues = new { user.Name, user.Email };
+
         user.Name = dto.Name;
         user.Email = dto.Email;
 
         await _context.SaveChangesAsync();
+
+        await _auditService.LogAsync(
+            AuditActions.Updated,
+            "User",
+            user.Id,
+            oldValues: oldValues,
+            newValues: new { user.Name, user.Email }
+        );
 
         return new UserResponseDto
         {
@@ -151,6 +168,13 @@ public class UserService
 
         user.Password = BCrypt.Net.BCrypt.HashPassword(dto.NewPassword);
         await _context.SaveChangesAsync();
+
+        await _auditService.LogAsync(
+            AuditActions.PasswordChanged,
+            "User",
+            user.Id
+        );
+
         return true;
     }
 
@@ -158,6 +182,13 @@ public class UserService
     {
         var user = await _context.Users.FindAsync(id);
         if (user is null) return false;
+
+        await _auditService.LogAsync(
+            AuditActions.Deleted,
+            "User",
+            user.Id,
+            oldValues: new { user.Name, user.Email }
+        );
 
         _context.Users.Remove(user);
         await _context.SaveChangesAsync();
@@ -175,6 +206,13 @@ public class UserService
         var url = await storageService.UploadAsync(fileStream, fileName, contentType);
         user.AvatarUrl = url;
         await _context.SaveChangesAsync();
+
+        await _auditService.LogAsync(
+            AuditActions.AvatarUpdated,
+            "User",
+            user.Id,
+            newValues: new { AvatarUrl = url }
+        );
 
         return url;
     }
