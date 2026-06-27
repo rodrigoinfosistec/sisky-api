@@ -174,16 +174,21 @@ public class RoleService
         return new { role.Id, role.Name, role.IsSystem, role.CreatedAt };
     }
 
-    public async Task<bool> Delete(int roleId)
+    public async Task<(bool Success, string? Error)> Delete(int roleId)
     {
         var role = await _context.Roles
             .FirstOrDefaultAsync(r => r.Id == roleId && r.TenantId == _tenantContext.TenantId);
-        if (role is null || role.IsSystem) return false;
+        if (role is null) return (false, "Perfil não encontrado.");
+        if (role.IsSystem) return (false, "Perfis do sistema não podem ser excluídos.");
+
+        var hasUsers = await _context.UserRoles.AnyAsync(ur => ur.RoleId == roleId);
+        if (hasUsers) return (false, "Este perfil possui usuários associados. Remova-os antes de excluir.");
+
+        await _auditService.LogAsync(AuditActions.Deleted, "Role", roleId, oldValues: new { role.Name });
 
         _context.Roles.Remove(role);
         await _context.SaveChangesAsync();
 
-        await _auditService.LogAsync(AuditActions.Deleted, "Role", roleId, oldValues: new { role.Name });
-        return true;
+        return (true, null);
     }
 }

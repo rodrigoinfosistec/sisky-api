@@ -72,8 +72,8 @@ public class RoleController : ControllerBase
     [HttpDelete("{id}")]
     public async Task<IActionResult> Delete(int id)
     {
-        var result = await _roleService.Delete(id);
-        if (!result) return BadRequest("Role não encontrada ou é do sistema.");
+        var (success, error) = await _roleService.Delete(id);
+        if (!success) return BadRequest(error);
         return NoContent();
     }
 }
