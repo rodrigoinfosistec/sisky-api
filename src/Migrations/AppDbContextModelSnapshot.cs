@@ -150,38 +150,6 @@ namespace SiskyApi.Migrations
                     b.ToTable("company_modules", (string)null);
                 });
 
-            modelBuilder.Entity("SiskyApi.Models.Department", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer")
-                        .HasColumnName("id");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("created_at");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("name");
-
-                    b.Property<int>("TenantId")
-                        .HasColumnType("integer")
-                        .HasColumnName("tenant_id");
-
-                    b.HasKey("Id")
-                        .HasName("pk_departments");
-
-                    b.HasIndex("TenantId", "Name")
-                        .IsUnique()
-                        .HasDatabaseName("ix_departments_tenant_id_name");
-
-                    b.ToTable("departments", (string)null);
-                });
-
             modelBuilder.Entity("SiskyApi.Models.Module", b =>
                 {
                     b.Property<int>("Id")
@@ -404,10 +372,6 @@ namespace SiskyApi.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
 
-                    b.Property<int?>("DepartmentId")
-                        .HasColumnType("integer")
-                        .HasColumnName("department_id");
-
                     b.Property<string>("Email")
                         .IsRequired()
                         .HasColumnType("text")
@@ -429,9 +393,6 @@ namespace SiskyApi.Migrations
 
                     b.HasKey("Id")
                         .HasName("pk_users");
-
-                    b.HasIndex("DepartmentId")
-                        .HasDatabaseName("ix_users_department_id");
 
                     b.HasIndex("Email")
                         .IsUnique()
@@ -533,18 +494,6 @@ namespace SiskyApi.Migrations
                     b.Navigation("Module");
                 });
 
-            modelBuilder.Entity("SiskyApi.Models.Department", b =>
-                {
-                    b.HasOne("SiskyApi.Models.Tenant", "Tenant")
-                        .WithMany()
-                        .HasForeignKey("TenantId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired()
-                        .HasConstraintName("fk_departments_tenants_tenant_id");
-
-                    b.Navigation("Tenant");
-                });
-
             modelBuilder.Entity("SiskyApi.Models.Permission", b =>
                 {
                     b.HasOne("SiskyApi.Models.Module", "Module")
@@ -613,17 +562,10 @@ namespace SiskyApi.Migrations
 
             modelBuilder.Entity("SiskyApi.Models.User", b =>
                 {
-                    b.HasOne("SiskyApi.Models.Department", "Department")
-                        .WithMany("Users")
-                        .HasForeignKey("DepartmentId")
-                        .HasConstraintName("fk_users_departments_department_id");
-
                     b.HasOne("SiskyApi.Models.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .HasConstraintName("fk_users_tenants_tenant_id");
-
-                    b.Navigation("Department");
 
                     b.Navigation("Tenant");
                 });
@@ -686,11 +628,6 @@ namespace SiskyApi.Migrations
                     b.Navigation("UserCompanies");
 
                     b.Navigation("UserRoles");
-                });
-
-            modelBuilder.Entity("SiskyApi.Models.Department", b =>
-                {
-                    b.Navigation("Users");
                 });
 
             modelBuilder.Entity("SiskyApi.Models.Module", b =>
