@@ -20,7 +20,9 @@ public class UserService
 
     public async Task<PaginatedResponseDto<UserResponseDto>> GetAll(int page, int perPage, string sortBy = "name", string sortDir = "asc", string? search = null, bool? active = null)
     {
-        var query = _context.Users.AsQueryable();
+        var query = _context.Users
+            .Include(u => u.Department)
+            .AsQueryable();
 
         if (_tenantContext.HasTenant)
         {
@@ -60,6 +62,8 @@ public class UserService
                 Email = user.Email,
                 AvatarUrl = user.AvatarUrl,
                 Active = user.Active,
+                DepartmentId = user.DepartmentId,
+                DepartmentName = user.Department != null ? user.Department.Name : null,
                 CreatedAt = user.CreatedAt
             })
             .ToListAsync();
@@ -161,6 +165,7 @@ public class UserService
             Email = dto.Email,
             Password = BCrypt.Net.BCrypt.HashPassword(dto.Password),
             TenantId = _tenantContext.TenantId,
+            DepartmentId = dto.DepartmentId,
             Active = true,
             CreatedAt = DateTime.UtcNow
         };
@@ -206,6 +211,7 @@ public class UserService
 
         user.Name = dto.Name;
         user.Email = dto.Email;
+        user.DepartmentId = dto.DepartmentId;
 
         await _context.SaveChangesAsync();
 
