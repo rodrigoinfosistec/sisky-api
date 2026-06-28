@@ -10,6 +10,7 @@ using SiskyApi.Authorization;
 using SiskyApi.Data;
 using SiskyApi.Services;
 using SiskyApi.Validators;
+using Scalar.AspNetCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -104,6 +105,11 @@ var app = builder.Build();
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
+    app.MapScalarApiReference(options =>
+    {
+        options.Title = "Sisky API";
+        options.Theme = ScalarTheme.DeepSpace;
+    });
 }
 
 app.UseCors("AllowFrontend");
