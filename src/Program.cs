@@ -21,7 +21,6 @@ builder.Services.AddScoped<StorageService>();
 builder.Services.AddScoped<EmailService>();
 builder.Services.AddScoped<AuditService>();
 builder.Services.AddScoped<RoleService>();
-builder.Services.AddScoped<DepartmentService>();
 
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection"))
