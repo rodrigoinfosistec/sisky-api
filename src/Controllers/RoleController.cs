@@ -1,6 +1,7 @@
-using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using FluentValidation;
+using SiskyApi.DTOs;
 using SiskyApi.Services;
 
 namespace SiskyApi.Controllers;
@@ -11,19 +12,26 @@ namespace SiskyApi.Controllers;
 public class RoleController : ControllerBase
 {
     private readonly RoleService _roleService;
+    private readonly IValidator<RoleCreateDto> _createValidator;
+    private readonly IValidator<RoleUpdateDto> _updateValidator;
 
-    public RoleController(RoleService roleService)
+    public RoleController(
+        RoleService roleService,
+        IValidator<RoleCreateDto> createValidator,
+        IValidator<RoleUpdateDto> updateValidator)
     {
         _roleService = roleService;
+        _createValidator = createValidator;
+        _updateValidator = updateValidator;
     }
 
     [HttpGet]
     public async Task<IActionResult> GetAll(
-    [FromQuery] int page = 1,
-    [FromQuery] int perPage = 15,
-    [FromQuery] string sortBy = "name",
-    [FromQuery] string sortDir = "asc",
-    [FromQuery] string? search = null)
+        [FromQuery] int page = 1,
+        [FromQuery] int perPage = 15,
+        [FromQuery] string sortBy = "name",
+        [FromQuery] string sortDir = "asc",
+        [FromQuery] string? search = null)
     {
         var result = await _roleService.GetAll(page, perPage, sortBy, sortDir, search);
         return Ok(result);
@@ -35,6 +43,36 @@ public class RoleController : ControllerBase
         var result = await _roleService.GetPermissions(id);
         if (result is null) return NotFound();
         return Ok(result);
+    }
+
+    [HttpPost]
+    public async Task<IActionResult> Create([FromBody] RoleCreateDto dto)
+    {
+        var validation = await _createValidator.ValidateAsync(dto);
+        if (!validation.IsValid) return BadRequest(validation.Errors.Select(e => e.ErrorMessage));
+
+        var result = await _roleService.Create(dto.Name);
+        if (result is null) return BadRequest("Nome já existe.");
+        return Ok(result);
+    }
+
+    [HttpPut("{id}")]
+    public async Task<IActionResult> Update(int id, [FromBody] RoleUpdateDto dto)
+    {
+        var validation = await _updateValidator.ValidateAsync(dto);
+        if (!validation.IsValid) return BadRequest(validation.Errors.Select(e => e.ErrorMessage));
+
+        var result = await _roleService.Update(id, dto.Name);
+        if (result is null) return BadRequest("Role não encontrada ou é do sistema.");
+        return Ok(result);
+    }
+
+    [HttpDelete("{id}")]
+    public async Task<IActionResult> Delete(int id)
+    {
+        var (success, error) = await _roleService.Delete(id);
+        if (!success) return BadRequest(error);
+        return NoContent();
     }
 
     [HttpPost("{id}/permissions")]
@@ -50,30 +88,6 @@ public class RoleController : ControllerBase
     {
         var result = await _roleService.RemovePermission(id, permissionId);
         if (!result) return NotFound();
-        return NoContent();
-    }
-
-    [HttpPost]
-    public async Task<IActionResult> Create([FromBody] string name)
-    {
-        var result = await _roleService.Create(name);
-        if (result is null) return BadRequest("Nome já existe.");
-        return Ok(result);
-    }
-
-    [HttpPut("{id}")]
-    public async Task<IActionResult> Update(int id, [FromBody] string name)
-    {
-        var result = await _roleService.Update(id, name);
-        if (result is null) return BadRequest("Role não encontrada ou é do sistema.");
-        return Ok(result);
-    }
-
-    [HttpDelete("{id}")]
-    public async Task<IActionResult> Delete(int id)
-    {
-        var (success, error) = await _roleService.Delete(id);
-        if (!success) return BadRequest(error);
         return NoContent();
     }
 }

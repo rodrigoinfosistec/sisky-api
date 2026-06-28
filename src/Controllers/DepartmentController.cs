@@ -1,5 +1,7 @@
+using FluentValidation;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using SiskyApi.DTOs;
 using SiskyApi.Services;
 
 namespace SiskyApi.Controllers;
@@ -10,10 +12,17 @@ namespace SiskyApi.Controllers;
 public class DepartmentController : ControllerBase
 {
     private readonly DepartmentService _departmentService;
+    private readonly IValidator<DepartmentCreateDto> _createValidator;
+    private readonly IValidator<DepartmentUpdateDto> _updateValidator;
 
-    public DepartmentController(DepartmentService departmentService)
+    public DepartmentController(
+        DepartmentService departmentService,
+        IValidator<DepartmentCreateDto> createValidator,
+        IValidator<DepartmentUpdateDto> updateValidator)
     {
         _departmentService = departmentService;
+        _createValidator = createValidator;
+        _updateValidator = updateValidator;
     }
 
     [HttpGet]
@@ -36,17 +45,23 @@ public class DepartmentController : ControllerBase
     }
 
     [HttpPost]
-    public async Task<IActionResult> Create([FromBody] string name)
+    public async Task<IActionResult> Create([FromBody] DepartmentCreateDto dto)
     {
-        var result = await _departmentService.Create(name);
+        var validation = await _createValidator.ValidateAsync(dto);
+        if (!validation.IsValid) return BadRequest(validation.Errors.Select(e => e.ErrorMessage));
+
+        var result = await _departmentService.Create(dto.Name);
         if (result is null) return BadRequest("Já existe um departamento com este nome.");
         return Ok(result);
     }
 
     [HttpPut("{id}")]
-    public async Task<IActionResult> Update(int id, [FromBody] string name)
+    public async Task<IActionResult> Update(int id, [FromBody] DepartmentUpdateDto dto)
     {
-        var result = await _departmentService.Update(id, name);
+        var validation = await _updateValidator.ValidateAsync(dto);
+        if (!validation.IsValid) return BadRequest(validation.Errors.Select(e => e.ErrorMessage));
+
+        var result = await _departmentService.Update(id, dto.Name);
         if (result is null) return NotFound("Departamento não encontrado.");
         return Ok(result);
     }
