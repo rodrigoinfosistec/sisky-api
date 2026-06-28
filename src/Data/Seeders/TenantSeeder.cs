@@ -26,6 +26,16 @@ public static class TenantSeeder
             await context.SaveChangesAsync();
         }
 
+        // Atualiza o TenantId do administrador
+        var admin = await context.Users
+            .FirstOrDefaultAsync(u => u.Email == "rodrigo.infosistec@gmail.com");
+
+        if (admin != null && admin.TenantId is null)
+        {
+            admin.TenantId = tenant.Id;
+            await context.SaveChangesAsync();
+        }
+
         // Módulos do tenant
         foreach (var module in modules)
         {
@@ -132,10 +142,6 @@ public static class TenantSeeder
             }
         }
         await context.SaveChangesAsync();
-
-        // Associa o administrador às empresas
-        var admin = await context.Users
-            .FirstOrDefaultAsync(u => u.Email == "rodrigo.infosistec@gmail.com");
 
         if (admin != null)
         {
