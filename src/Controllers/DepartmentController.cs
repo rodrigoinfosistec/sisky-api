@@ -1,6 +1,7 @@
 using FluentValidation;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using SiskyApi.Authorization;
 using SiskyApi.DTOs;
 using SiskyApi.Services;
 
@@ -25,6 +26,7 @@ public class DepartmentController : ControllerBase
         _updateValidator = updateValidator;
     }
 
+    [RequirePermission("users.view")]
     [HttpGet]
     public async Task<IActionResult> GetAll(
         [FromQuery] int page = 1,
@@ -37,6 +39,7 @@ public class DepartmentController : ControllerBase
         return Ok(result);
     }
 
+    [RequirePermission("users.view")]
     [HttpGet("simple")]
     public async Task<IActionResult> GetAllSimple()
     {
@@ -44,6 +47,7 @@ public class DepartmentController : ControllerBase
         return Ok(result);
     }
 
+    [RequirePermission("users.create")]
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] DepartmentCreateDto dto)
     {
@@ -55,6 +59,7 @@ public class DepartmentController : ControllerBase
         return Ok(result);
     }
 
+    [RequirePermission("users.edit")]
     [HttpPut("{id}")]
     public async Task<IActionResult> Update(int id, [FromBody] DepartmentUpdateDto dto)
     {
@@ -66,6 +71,7 @@ public class DepartmentController : ControllerBase
         return Ok(result);
     }
 
+    [RequirePermission("users.delete")]
     [HttpDelete("{id}")]
     public async Task<IActionResult> Delete(int id)
     {

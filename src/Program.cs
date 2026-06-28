@@ -2,9 +2,11 @@ using SiskyApi.Data.Seeders;
 using System.Text;
 using FluentValidation;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using StackExchange.Redis;
+using SiskyApi.Authorization;
 using SiskyApi.Data;
 using SiskyApi.Services;
 using SiskyApi.Validators;
@@ -69,6 +71,17 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         };
     });
 
+builder.Services.AddSingleton<IAuthorizationHandler, PermissionHandler>();
+
+builder.Services.AddAuthorization(options =>
+{
+    foreach (var permission in PermissionsConfig.All)
+    {
+        options.AddPolicy(permission, policy =>
+            policy.Requirements.Add(new PermissionRequirement(permission)));
+    }
+});
+
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowFrontend", policy =>
@@ -84,7 +97,6 @@ builder.Services.AddCors(options =>
 });
 
 builder.Services.AddScoped<TenantContext>();
-
 builder.Services.AddHttpContextAccessor();
 
 var app = builder.Build();
@@ -95,7 +107,6 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseCors("AllowFrontend");
-
 app.UseHttpsRedirection();
 app.UseMiddleware<SiskyApi.Middlewares.TokenBlacklistMiddleware>();
 app.UseMiddleware<SiskyApi.Middlewares.TenantMiddleware>();

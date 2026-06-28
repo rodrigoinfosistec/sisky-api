@@ -2,6 +2,7 @@ using System.Security.Claims;
 using FluentValidation;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using SiskyApi.Authorization;
 using SiskyApi.DTOs;
 using SiskyApi.Services;
 
@@ -32,6 +33,7 @@ public class UserController : ControllerBase
         _storageService = storageService;
     }
 
+    [RequirePermission("users.view")]
     [HttpGet("me")]
     public async Task<IActionResult> Me()
     {
@@ -58,19 +60,21 @@ public class UserController : ControllerBase
         });
     }
 
+    [RequirePermission("users.view")]
     [HttpGet]
     public async Task<IActionResult> GetAll(
-    [FromQuery] int page = 1,
-    [FromQuery] int perPage = 15,
-    [FromQuery] string sortBy = "name",
-    [FromQuery] string sortDir = "asc",
-    [FromQuery] string? search = null,
-    [FromQuery] bool? active = null)
+        [FromQuery] int page = 1,
+        [FromQuery] int perPage = 15,
+        [FromQuery] string sortBy = "name",
+        [FromQuery] string sortDir = "asc",
+        [FromQuery] string? search = null,
+        [FromQuery] bool? active = null)
     {
         var result = await _userService.GetAll(page, perPage, sortBy, sortDir, search, active);
         return Ok(result);
     }
 
+    [RequirePermission("users.view")]
     [HttpGet("{id}")]
     public async Task<IActionResult> GetById(int id)
     {
@@ -79,6 +83,7 @@ public class UserController : ControllerBase
         return Ok(user);
     }
 
+    [RequirePermission("users.view")]
     [HttpGet("{id}/details")]
     public async Task<IActionResult> GetDetails(int id)
     {
@@ -87,6 +92,7 @@ public class UserController : ControllerBase
         return Ok(details);
     }
 
+    [RequirePermission("users.create")]
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] UserCreateDto dto)
     {
@@ -97,6 +103,7 @@ public class UserController : ControllerBase
         return CreatedAtAction(nameof(GetById), new { id = user.Id }, user);
     }
 
+    [RequirePermission("users.edit")]
     [HttpPut("{id}")]
     public async Task<IActionResult> Update(int id, [FromBody] UserUpdateDto dto)
     {
@@ -109,6 +116,7 @@ public class UserController : ControllerBase
         return Ok(user);
     }
 
+    [RequirePermission("users.edit")]
     [HttpPatch("{id}/change-password")]
     public async Task<IActionResult> ChangePassword(int id, [FromBody] UserChangePasswordDto dto)
     {
@@ -120,6 +128,17 @@ public class UserController : ControllerBase
         return NoContent();
     }
 
+    [RequirePermission("users.edit")]
+    [HttpPatch("{id}/toggle-active")]
+    public async Task<IActionResult> ToggleActive(int id)
+    {
+        var currentUserId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+        var (success, error, data) = await _userService.ToggleActive(id, currentUserId);
+        if (!success) return BadRequest(error);
+        return Ok(data);
+    }
+
+    [RequirePermission("users.delete")]
     [HttpDelete("{id}")]
     public async Task<IActionResult> Delete(int id)
     {
@@ -128,6 +147,7 @@ public class UserController : ControllerBase
         return NoContent();
     }
 
+    [RequirePermission("users.edit")]
     [HttpPost("{id}/avatar")]
     public async Task<IActionResult> UpdateAvatar(int id)
     {
@@ -151,6 +171,7 @@ public class UserController : ControllerBase
         return Ok(new { avatarUrl = url });
     }
 
+    [RequirePermission("users.view")]
     [HttpGet("companies")]
     public async Task<IActionResult> GetCompanies()
     {
@@ -159,6 +180,7 @@ public class UserController : ControllerBase
         return Ok(companies);
     }
 
+    [RequirePermission("users.edit")]
     [HttpPost("{id}/companies")]
     public async Task<IActionResult> AddCompany(int id, [FromBody] AddUserCompanyDto dto)
     {
@@ -167,6 +189,7 @@ public class UserController : ControllerBase
         return NoContent();
     }
 
+    [RequirePermission("users.edit")]
     [HttpDelete("{id}/companies/{companyId}")]
     public async Task<IActionResult> RemoveCompany(int id, int companyId)
     {
@@ -175,6 +198,7 @@ public class UserController : ControllerBase
         return NoContent();
     }
 
+    [RequirePermission("users.edit")]
     [HttpPatch("{id}/companies/{companyId}/default")]
     public async Task<IActionResult> SetDefaultCompany(int id, int companyId)
     {
@@ -183,6 +207,7 @@ public class UserController : ControllerBase
         return NoContent();
     }
 
+    [RequirePermission("users.edit")]
     [HttpPost("{id}/companies/{companyId}/roles")]
     public async Task<IActionResult> AddRole(int id, int companyId, [FromBody] AddUserRoleDto dto)
     {
@@ -191,20 +216,12 @@ public class UserController : ControllerBase
         return NoContent();
     }
 
+    [RequirePermission("users.edit")]
     [HttpDelete("{id}/companies/{companyId}/roles/{roleId}")]
     public async Task<IActionResult> RemoveRole(int id, int companyId, int roleId)
     {
         var result = await _userService.RemoveRole(id, companyId, roleId);
         if (!result) return NotFound();
         return NoContent();
-    }
-
-    [HttpPatch("{id}/toggle-active")]
-    public async Task<IActionResult> ToggleActive(int id)
-    {
-        var currentUserId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
-        var (success, error, data) = await _userService.ToggleActive(id, currentUserId);
-        if (!success) return BadRequest(error);
-        return Ok(data);
     }
 }

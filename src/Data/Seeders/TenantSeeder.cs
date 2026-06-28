@@ -1,3 +1,4 @@
+using SiskyApi.Authorization;
 using SiskyApi.Models;
 
 namespace SiskyApi.Data.Seeders;
@@ -19,16 +20,30 @@ public static class TenantSeeder
         await context.Modules.AddRangeAsync(modules);
         await context.SaveChangesAsync();
 
-        // Permissões por módulo
+        // Permissões baseadas no PermissionsConfig
         var permissions = new List<Permission>();
-        foreach (var module in modules)
+        foreach (var slug in PermissionsConfig.All)
         {
-            permissions.AddRange(new[]
+            var parts = slug.Split('.');
+            var moduleSlug = parts[0];
+            var action = parts[1];
+            var module = modules.FirstOrDefault(m => m.Slug == moduleSlug);
+            if (module is null) continue;
+
+            var description = action switch
             {
-                new Permission { ModuleId = module.Id, Slug = $"{module.Slug}.view", Description = $"Visualizar {module.Name}" },
-                new Permission { ModuleId = module.Id, Slug = $"{module.Slug}.create", Description = $"Criar em {module.Name}" },
-                new Permission { ModuleId = module.Id, Slug = $"{module.Slug}.edit", Description = $"Editar em {module.Name}" },
-                new Permission { ModuleId = module.Id, Slug = $"{module.Slug}.delete", Description = $"Excluir em {module.Name}" },
+                "view" => $"Visualizar {module.Name}",
+                "create" => $"Criar em {module.Name}",
+                "edit" => $"Editar em {module.Name}",
+                "delete" => $"Excluir em {module.Name}",
+                _ => slug
+            };
+
+            permissions.Add(new Permission
+            {
+                ModuleId = module.Id,
+                Slug = slug,
+                Description = description
             });
         }
         await context.Permissions.AddRangeAsync(permissions);

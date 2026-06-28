@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using FluentValidation;
+using SiskyApi.Authorization;
 using SiskyApi.DTOs;
 using SiskyApi.Services;
 
@@ -25,6 +26,7 @@ public class RoleController : ControllerBase
         _updateValidator = updateValidator;
     }
 
+    [RequirePermission("users.view")]
     [HttpGet]
     public async Task<IActionResult> GetAll(
         [FromQuery] int page = 1,
@@ -37,6 +39,7 @@ public class RoleController : ControllerBase
         return Ok(result);
     }
 
+    [RequirePermission("users.view")]
     [HttpGet("{id}/permissions")]
     public async Task<IActionResult> GetPermissions(int id)
     {
@@ -45,6 +48,7 @@ public class RoleController : ControllerBase
         return Ok(result);
     }
 
+    [RequirePermission("users.create")]
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] RoleCreateDto dto)
     {
@@ -56,6 +60,7 @@ public class RoleController : ControllerBase
         return Ok(result);
     }
 
+    [RequirePermission("users.edit")]
     [HttpPut("{id}")]
     public async Task<IActionResult> Update(int id, [FromBody] RoleUpdateDto dto)
     {
@@ -67,6 +72,7 @@ public class RoleController : ControllerBase
         return Ok(result);
     }
 
+    [RequirePermission("users.delete")]
     [HttpDelete("{id}")]
     public async Task<IActionResult> Delete(int id)
     {
@@ -75,6 +81,7 @@ public class RoleController : ControllerBase
         return NoContent();
     }
 
+    [RequirePermission("users.edit")]
     [HttpPost("{id}/permissions")]
     public async Task<IActionResult> AddPermission(int id, [FromBody] int permissionId)
     {
@@ -83,6 +90,7 @@ public class RoleController : ControllerBase
         return NoContent();
     }
 
+    [RequirePermission("users.edit")]
     [HttpDelete("{id}/permissions/{permissionId}")]
     public async Task<IActionResult> RemovePermission(int id, int permissionId)
     {
