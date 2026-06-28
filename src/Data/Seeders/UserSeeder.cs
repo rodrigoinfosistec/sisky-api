@@ -1,4 +1,5 @@
 using Bogus;
+using Microsoft.EntityFrameworkCore;
 using SiskyApi.Models;
 
 namespace SiskyApi.Data.Seeders;
@@ -7,19 +8,22 @@ public static class UserSeeder
 {
     public static async Task SeedAsync(AppDbContext context, IWebHostEnvironment env)
     {
-        if (context.Users.Any()) return;
+        var exists = await context.Users
+            .AnyAsync(u => u.Email == "rodrigo.infosistec@gmail.com");
 
-        var users = new List<User>
+        if (!exists)
         {
-            new User
+            var admin = new User
             {
-                Name = "Rodrigo",
+                Name = "Administrador",
                 Email = "rodrigo.infosistec@gmail.com",
                 Password = BCrypt.Net.BCrypt.HashPassword("password"),
                 Active = true,
                 CreatedAt = DateTime.UtcNow
-            }
-        };
+            };
+            context.Users.Add(admin);
+            await context.SaveChangesAsync();
+        }
 
         if (env.IsDevelopment())
         {
@@ -30,10 +34,16 @@ public static class UserSeeder
                 .RuleFor(u => u.Active, f => true)
                 .RuleFor(u => u.CreatedAt, f => f.Date.Past(1).ToUniversalTime());
 
-            users.AddRange(faker.Generate(49));
+            var fakeUsers = faker.Generate(49);
+            foreach (var user in fakeUsers)
+            {
+                var emailExists = await context.Users.AnyAsync(u => u.Email == user.Email);
+                if (!emailExists)
+                {
+                    context.Users.Add(user);
+                }
+            }
+            await context.SaveChangesAsync();
         }
-
-        await context.Users.AddRangeAsync(users);
-        await context.SaveChangesAsync();
     }
 }

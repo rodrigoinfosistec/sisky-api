@@ -1,4 +1,4 @@
-using SiskyApi.Authorization;
+using Microsoft.EntityFrameworkCore;
 using SiskyApi.Models;
 
 namespace SiskyApi.Data.Seeders;
@@ -7,114 +7,186 @@ public static class TenantSeeder
 {
     public static async Task SeedAsync(AppDbContext context, IWebHostEnvironment env)
     {
-        if (context.Tenants.Any()) return;
+        var modules = await context.Modules.ToListAsync();
+        var permissions = await context.Permissions.ToListAsync();
 
-        // Módulos do sistema
-        var modules = new List<Module>
+        // Tenant
+        var tenant = await context.Tenants
+            .FirstOrDefaultAsync(t => t.Subdomain == "default");
+
+        if (tenant is null)
         {
-            new Module { Name = "Usuários", Slug = "users", Description = "Gestão de usuários e permissões" },
-            new Module { Name = "Financeiro", Slug = "financeiro", Description = "Gestão financeira" },
-            new Module { Name = "RH", Slug = "rh", Description = "Recursos humanos" },
-            new Module { Name = "CRM", Slug = "crm", Description = "Gestão de clientes" },
-        };
-        await context.Modules.AddRangeAsync(modules);
-        await context.SaveChangesAsync();
-
-        // Permissões baseadas no PermissionsConfig
-        var permissions = new List<Permission>();
-        foreach (var slug in PermissionsConfig.All)
-        {
-            var parts = slug.Split('.');
-            var moduleSlug = parts[0];
-            var action = parts[1];
-            var module = modules.FirstOrDefault(m => m.Slug == moduleSlug);
-            if (module is null) continue;
-
-            var description = action switch
+            tenant = new Tenant
             {
-                "view" => $"Visualizar {module.Name}",
-                "create" => $"Criar em {module.Name}",
-                "edit" => $"Editar em {module.Name}",
-                "delete" => $"Excluir em {module.Name}",
-                _ => slug
+                Name = "Tenant Default",
+                Subdomain = "default",
+                Active = true
             };
-
-            permissions.Add(new Permission
-            {
-                ModuleId = module.Id,
-                Slug = slug,
-                Description = description
-            });
+            await context.Tenants.AddAsync(tenant);
+            await context.SaveChangesAsync();
         }
-        await context.Permissions.AddRangeAsync(permissions);
-        await context.SaveChangesAsync();
-
-        // Tenant de exemplo
-        var tenant = new Tenant
-        {
-            Name = "Grupo Draxel",
-            Subdomain = "draxel",
-            Active = true
-        };
-        await context.Tenants.AddAsync(tenant);
-        await context.SaveChangesAsync();
 
         // Módulos do tenant
-        await context.TenantModules.AddRangeAsync(modules.Select(m => new TenantModule
+        foreach (var module in modules)
         {
-            TenantId = tenant.Id,
-            ModuleId = m.Id,
-            Active = true
-        }));
+            var exists = await context.TenantModules
+                .AnyAsync(tm => tm.TenantId == tenant.Id && tm.ModuleId == module.Id);
+            if (!exists)
+            {
+                context.TenantModules.Add(new TenantModule
+                {
+                    TenantId = tenant.Id,
+                    ModuleId = module.Id,
+                    Active = true
+                });
+            }
+        }
         await context.SaveChangesAsync();
 
         // Roles do sistema
-        var superAdminRole = new Role { TenantId = tenant.Id, Name = "Super Admin", IsSystem = true };
-        var adminTenantRole = new Role { TenantId = tenant.Id, Name = "Admin Tenant", IsSystem = true };
-        await context.Roles.AddRangeAsync(superAdminRole, adminTenantRole);
-        await context.SaveChangesAsync();
+        var superAdminRole = await context.Roles
+            .FirstOrDefaultAsync(r => r.TenantId == tenant.Id && r.Name == "Super Admin");
+
+        if (superAdminRole is null)
+        {
+            superAdminRole = new Role { TenantId = tenant.Id, Name = "Super Admin", IsSystem = true };
+            context.Roles.Add(superAdminRole);
+            await context.SaveChangesAsync();
+        }
+
+        var adminTenantRole = await context.Roles
+            .FirstOrDefaultAsync(r => r.TenantId == tenant.Id && r.Name == "Admin Tenant");
+
+        if (adminTenantRole is null)
+        {
+            adminTenantRole = new Role { TenantId = tenant.Id, Name = "Admin Tenant", IsSystem = true };
+            context.Roles.Add(adminTenantRole);
+            await context.SaveChangesAsync();
+        }
 
         // Super Admin tem todas as permissões
-        await context.RolePermissions.AddRangeAsync(permissions.Select(p => new RolePermission
+        foreach (var permission in permissions)
         {
-            RoleId = superAdminRole.Id,
-            PermissionId = p.Id
-        }));
+            var exists = await context.RolePermissions
+                .AnyAsync(rp => rp.RoleId == superAdminRole.Id && rp.PermissionId == permission.Id);
+            if (!exists)
+            {
+                context.RolePermissions.Add(new RolePermission
+                {
+                    RoleId = superAdminRole.Id,
+                    PermissionId = permission.Id
+                });
+            }
+        }
         await context.SaveChangesAsync();
 
-        // Empresas do tenant
-        var company1 = new Company { TenantId = tenant.Id, Name = "Draxel São Paulo", PrimaryColor = "#111111", Active = true };
-        var company2 = new Company { TenantId = tenant.Id, Name = "Draxel Rio", PrimaryColor = "#1a56db", Active = true };
-        await context.Companies.AddRangeAsync(company1, company2);
-        await context.SaveChangesAsync();
+        // Empresas
+        var company1 = await context.Companies
+            .FirstOrDefaultAsync(c => c.TenantId == tenant.Id && c.Name == "Empresa Principal");
+
+        if (company1 is null)
+        {
+            company1 = new Company { TenantId = tenant.Id, Name = "Empresa Principal", PrimaryColor = "#111111", Active = true };
+            context.Companies.Add(company1);
+            await context.SaveChangesAsync();
+        }
+
+        var company2 = await context.Companies
+            .FirstOrDefaultAsync(c => c.TenantId == tenant.Id && c.Name == "Empresa Secundária");
+
+        if (company2 is null)
+        {
+            company2 = new Company { TenantId = tenant.Id, Name = "Empresa Secundária", PrimaryColor = "#1a56db", Active = true };
+            context.Companies.Add(company2);
+            await context.SaveChangesAsync();
+        }
 
         // Módulos das empresas
-        await context.CompanyModules.AddRangeAsync(modules.Select(m => new CompanyModule
+        foreach (var module in modules)
         {
-            CompanyId = company1.Id,
-            ModuleId = m.Id,
-            Active = true
-        }));
-        await context.CompanyModules.AddRangeAsync(modules.Take(2).Select(m => new CompanyModule
+            var exists = await context.CompanyModules
+                .AnyAsync(cm => cm.CompanyId == company1.Id && cm.ModuleId == module.Id);
+            if (!exists)
+            {
+                context.CompanyModules.Add(new CompanyModule
+                {
+                    CompanyId = company1.Id,
+                    ModuleId = module.Id,
+                    Active = true
+                });
+            }
+        }
+
+        foreach (var module in modules.Take(2))
         {
-            CompanyId = company2.Id,
-            ModuleId = m.Id,
-            Active = true
-        }));
+            var exists = await context.CompanyModules
+                .AnyAsync(cm => cm.CompanyId == company2.Id && cm.ModuleId == module.Id);
+            if (!exists)
+            {
+                context.CompanyModules.Add(new CompanyModule
+                {
+                    CompanyId = company2.Id,
+                    ModuleId = module.Id,
+                    Active = true
+                });
+            }
+        }
         await context.SaveChangesAsync();
 
-        // Associa o usuário Rodrigo às duas empresas
-        var rodrigo = context.Users.FirstOrDefault(u => u.Email == "rodrigo.infosistec@gmail.com");
-        if (rodrigo != null)
+        // Associa o administrador às empresas
+        var admin = await context.Users
+            .FirstOrDefaultAsync(u => u.Email == "rodrigo.infosistec@gmail.com");
+
+        if (admin != null)
         {
-            await context.UserCompanies.AddRangeAsync(
-                new UserCompany { UserId = rodrigo.Id, CompanyId = company1.Id, IsDefault = true },
-                new UserCompany { UserId = rodrigo.Id, CompanyId = company2.Id, IsDefault = false }
-            );
-            await context.UserRoles.AddRangeAsync(
-                new UserRole { UserId = rodrigo.Id, CompanyId = company1.Id, RoleId = superAdminRole.Id },
-                new UserRole { UserId = rodrigo.Id, CompanyId = company2.Id, RoleId = superAdminRole.Id }
-            );
+            var uc1 = await context.UserCompanies
+                .AnyAsync(uc => uc.UserId == admin.Id && uc.CompanyId == company1.Id);
+            if (!uc1)
+            {
+                context.UserCompanies.Add(new UserCompany
+                {
+                    UserId = admin.Id,
+                    CompanyId = company1.Id,
+                    IsDefault = true
+                });
+            }
+
+            var uc2 = await context.UserCompanies
+                .AnyAsync(uc => uc.UserId == admin.Id && uc.CompanyId == company2.Id);
+            if (!uc2)
+            {
+                context.UserCompanies.Add(new UserCompany
+                {
+                    UserId = admin.Id,
+                    CompanyId = company2.Id,
+                    IsDefault = false
+                });
+            }
+
+            var ur1 = await context.UserRoles
+                .AnyAsync(ur => ur.UserId == admin.Id && ur.CompanyId == company1.Id && ur.RoleId == superAdminRole.Id);
+            if (!ur1)
+            {
+                context.UserRoles.Add(new UserRole
+                {
+                    UserId = admin.Id,
+                    CompanyId = company1.Id,
+                    RoleId = superAdminRole.Id
+                });
+            }
+
+            var ur2 = await context.UserRoles
+                .AnyAsync(ur => ur.UserId == admin.Id && ur.CompanyId == company2.Id && ur.RoleId == superAdminRole.Id);
+            if (!ur2)
+            {
+                context.UserRoles.Add(new UserRole
+                {
+                    UserId = admin.Id,
+                    CompanyId = company2.Id,
+                    RoleId = superAdminRole.Id
+                });
+            }
+
             await context.SaveChangesAsync();
         }
     }
