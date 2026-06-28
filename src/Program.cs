@@ -90,6 +90,7 @@ builder.Services.AddCors(options =>
             "http://localhost:3000",
             "https://sisky.com.br",
             "https://draxel.sisky.com.br",
+            "https://default.sisky.com.br",
             "https://sisky-web.vercel.app")
         .AllowAnyHeader()
         .AllowAnyMethod();
