@@ -6,18 +6,21 @@ namespace SiskyApi.Data.Seeders;
 
 public static class UserSeeder
 {
-    public static async Task SeedAsync(AppDbContext context, IWebHostEnvironment env)
+    public static async Task SeedAsync(AppDbContext context, IWebHostEnvironment env, IConfiguration configuration)
     {
+        var adminEmail = configuration["Admin:Email"]!;
+        var adminPassword = configuration["Admin:Password"]!;
+
         var exists = await context.Users
-            .AnyAsync(u => u.Email == "rodrigo.infosistec@gmail.com");
+            .AnyAsync(u => u.Email == adminEmail);
 
         if (!exists)
         {
             var admin = new User
             {
                 Name = "Administrador",
-                Email = "rodrigo.infosistec@gmail.com",
-                Password = BCrypt.Net.BCrypt.HashPassword("password"),
+                Email = adminEmail,
+                Password = BCrypt.Net.BCrypt.HashPassword(adminPassword),
                 Active = true,
                 CreatedAt = DateTime.UtcNow
             };
