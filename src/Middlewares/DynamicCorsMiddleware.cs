@@ -27,13 +27,20 @@ public class DynamicCorsMiddleware
 
             if (allowed)
             {
-                context.Response.Headers["Access-Control-Allow-Origin"] = origin;
-                context.Response.Headers["Access-Control-Allow-Headers"] = "*";
-                context.Response.Headers["Access-Control-Allow-Methods"] = "*";
+                context.Response.OnStarting(() =>
+                {
+                    context.Response.Headers["Access-Control-Allow-Origin"] = origin;
+                    context.Response.Headers["Access-Control-Allow-Headers"] = "*";
+                    context.Response.Headers["Access-Control-Allow-Methods"] = "*";
+                    return Task.CompletedTask;
+                });
 
                 if (context.Request.Method == "OPTIONS")
                 {
                     context.Response.StatusCode = 200;
+                    context.Response.Headers["Access-Control-Allow-Origin"] = origin;
+                    context.Response.Headers["Access-Control-Allow-Headers"] = "*";
+                    context.Response.Headers["Access-Control-Allow-Methods"] = "*";
                     return;
                 }
             }
@@ -41,7 +48,6 @@ public class DynamicCorsMiddleware
 
         await _next(context);
     }
-
     private async Task<bool> IsOriginAllowed(string origin, AppDbContext db)
     {
         try
