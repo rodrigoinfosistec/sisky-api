@@ -6,10 +6,12 @@ namespace SiskyApi.Middlewares;
 public class TenantMiddleware
 {
     private readonly RequestDelegate _next;
+    private readonly string _frontendUrl;
 
-    public TenantMiddleware(RequestDelegate next)
+    public TenantMiddleware(RequestDelegate next, IConfiguration configuration)
     {
         _next = next;
+        _frontendUrl = configuration["App:FrontendUrl"]!;
     }
 
     public async Task Invoke(HttpContext context, AppDbContext db)
@@ -27,7 +29,7 @@ public class TenantMiddleware
                 await context.Response.WriteAsJsonAsync(new
                 {
                     error = "Tenant não encontrado ou inativo.",
-                    redirectTo = "https://sisky.com.br"
+                    redirectTo = _frontendUrl
                 });
                 return;
             }

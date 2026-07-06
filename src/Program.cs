@@ -82,20 +82,7 @@ builder.Services.AddAuthorization(options =>
     }
 });
 
-builder.Services.AddCors(options =>
-{
-    options.AddPolicy("AllowFrontend", policy =>
-    {
-        policy.WithOrigins(
-            "http://localhost:3000",
-            "https://sisky.com.br",
-            "https://draxel.sisky.com.br",
-            "https://default.sisky.com.br",
-            "https://sisky-web.vercel.app")
-        .AllowAnyHeader()
-        .AllowAnyMethod();
-    });
-});
+builder.Services.AddMemoryCache();
 
 builder.Services.AddScoped<TenantContext>();
 builder.Services.AddHttpContextAccessor();
@@ -112,8 +99,8 @@ if (app.Environment.IsDevelopment())
     });
 }
 
-app.UseCors("AllowFrontend");
 app.UseHttpsRedirection();
+app.UseMiddleware<SiskyApi.Middlewares.DynamicCorsMiddleware>();
 app.UseMiddleware<SiskyApi.Middlewares.TokenBlacklistMiddleware>();
 app.UseMiddleware<SiskyApi.Middlewares.TenantMiddleware>();
 app.UseAuthentication();
