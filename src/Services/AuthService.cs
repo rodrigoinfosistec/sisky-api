@@ -10,15 +10,6 @@ using SiskyApi.DTOs;
 
 namespace SiskyApi.Services;
 
-public class SessionInfo
-{
-    public string Token { get; set; } = string.Empty;
-    public string IpAddress { get; set; } = string.Empty;
-    public string UserAgent { get; set; } = string.Empty;
-    public DateTime CreatedAt { get; set; }
-    public DateTime ExpiresAt { get; set; }
-}
-
 public class AuthService
 {
     private readonly AppDbContext _context;
@@ -34,7 +25,7 @@ public class AuthService
         _auditService = auditService;
     }
 
-    public async Task<object?> Login(LoginDto dto, string ipAddress, string userAgent)
+    public async Task<LoginResponseDto?> Login(LoginDto dto, string ipAddress, string userAgent)
     {
         var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == dto.Email && u.Active);
         if (user is null) return null;
@@ -45,7 +36,7 @@ public class AuthService
         var token = GenerateJwtToken(user.Id, user.Email, user.Name, tenantId, companyId, roles, permissions);
         var expiresAt = DateTime.UtcNow.AddHours(double.Parse(_configuration["Jwt:ExpiresInHours"]!));
 
-        var session = new SessionInfo
+        var session = new SessionInfoDto
         {
             Token = token,
             IpAddress = ipAddress,
@@ -76,11 +67,12 @@ public class AuthService
                 user.Id.ToString(),
                 TimeSpan.FromDays(30));
 
-            return new { token, refreshToken };
+            return new LoginResponseDto { Token = token, RefreshToken = refreshToken };
         }
 
-        return new { token };
+        return new LoginResponseDto { Token = token };
     }
+
     public async Task<string?> Refresh(string refreshToken)
     {
         var userId = await _redis.StringGetAsync($"refresh_token:{refreshToken}");
@@ -117,19 +109,19 @@ public class AuthService
         return await _redis.KeyExistsAsync($"blacklist:{token}");
     }
 
-    public async Task<List<SessionInfo>> GetSessions(int userId)
+    public async Task<List<SessionInfoDto>> GetSessions(int userId)
     {
         var pattern = $"session:{userId}:*";
         var server = _redis.Multiplexer.GetServer(_redis.Multiplexer.GetEndPoints().First());
         var keys = server.Keys(pattern: pattern);
 
-        var sessions = new List<SessionInfo>();
+        var sessions = new List<SessionInfoDto>();
         foreach (var key in keys)
         {
             var value = await _redis.StringGetAsync(key);
             if (!value.IsNullOrEmpty)
             {
-                var session = JsonSerializer.Deserialize<SessionInfo>(value!.ToString());
+                var session = JsonSerializer.Deserialize<SessionInfoDto>(value!.ToString());
                 if (session != null) sessions.Add(session);
             }
         }
@@ -143,7 +135,7 @@ public class AuthService
         var value = await _redis.StringGetAsync(key);
         if (!value.IsNullOrEmpty)
         {
-            var session = JsonSerializer.Deserialize<SessionInfo>(value!.ToString());
+            var session = JsonSerializer.Deserialize<SessionInfoDto>(value!.ToString());
             if (session != null)
             {
                 var handler = new JwtSecurityTokenHandler();
@@ -167,7 +159,7 @@ public class AuthService
             var value = await _redis.StringGetAsync(key);
             if (!value.IsNullOrEmpty)
             {
-                var session = JsonSerializer.Deserialize<SessionInfo>(value!.ToString());
+                var session = JsonSerializer.Deserialize<SessionInfoDto>(value!.ToString());
                 if (session != null && session.Token != currentToken)
                 {
                     var handler = new JwtSecurityTokenHandler();
@@ -220,11 +212,11 @@ public class AuthService
         var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
         var claims = new List<Claim>
-    {
-        new Claim(ClaimTypes.NameIdentifier, id.ToString()),
-        new Claim(ClaimTypes.Email, email),
-        new Claim(ClaimTypes.Name, name),
-    };
+        {
+            new Claim(ClaimTypes.NameIdentifier, id.ToString()),
+            new Claim(ClaimTypes.Email, email),
+            new Claim(ClaimTypes.Name, name),
+        };
 
         if (tenantId.HasValue)
             claims.Add(new Claim("tenant_id", tenantId.Value.ToString()));
@@ -257,7 +249,7 @@ public class AuthService
     public async Task<bool> ForgotPassword(string email, string frontendUrl, EmailService emailService)
     {
         var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == email);
-        if (user is null) return true; // não revela se o email existe
+        if (user is null) return true;
 
         var token = Guid.NewGuid().ToString();
         await _redis.StringSetAsync(
