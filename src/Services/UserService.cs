@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using SiskyApi.Data;
+using SiskyApi.Constants;
 using SiskyApi.DTOs;
 using SiskyApi.Models;
 
