@@ -89,7 +89,7 @@ public class UserService
         };
     }
 
-    public async Task<object?> GetUserDetails(int userId)
+    public async Task<UserDetailsDto?> GetUserDetails(int userId)
     {
         var user = await _context.Users.FindAsync(userId);
         if (user is null) return null;
@@ -97,55 +97,55 @@ public class UserService
         var companies = await _context.UserCompanies
             .Include(uc => uc.Company)
             .Where(uc => uc.UserId == userId)
-            .Select(uc => new
+            .Select(uc => new UserDetailsCompanyDto
             {
-                uc.Company.Id,
-                uc.Company.Name,
-                uc.Company.PrimaryColor,
-                uc.IsDefault
+                Id = uc.Company.Id,
+                Name = uc.Company.Name,
+                PrimaryColor = uc.Company.PrimaryColor,
+                IsDefault = uc.IsDefault
             })
             .ToListAsync();
 
         var userRoles = await _context.UserRoles
             .Include(ur => ur.Role)
             .Where(ur => ur.UserId == userId)
-            .Select(ur => new
+            .Select(ur => new UserDetailsRoleDto
             {
-                ur.CompanyId,
-                ur.Role.Id,
-                ur.Role.Name,
-                ur.Role.IsSystem
+                CompanyId = ur.CompanyId,
+                Id = ur.Role.Id,
+                Name = ur.Role.Name,
+                IsSystem = ur.Role.IsSystem
             })
             .ToListAsync();
 
         var tenantRoles = await _context.Roles
             .Where(r => r.TenantId == _tenantContext.TenantId)
-            .Select(r => new
+            .Select(r => new UserDetailsTenantRoleDto
             {
-                r.Id,
-                r.Name,
-                r.IsSystem
+                Id = r.Id,
+                Name = r.Name,
+                IsSystem = r.IsSystem
             })
             .ToListAsync();
 
         var tenantCompanies = await _context.Companies
             .Where(c => c.TenantId == _tenantContext.TenantId && c.Active)
-            .Select(c => new
+            .Select(c => new UserDetailsTenantCompanyDto
             {
-                c.Id,
-                c.Name,
-                c.PrimaryColor
+                Id = c.Id,
+                Name = c.Name,
+                PrimaryColor = c.PrimaryColor
             })
             .ToListAsync();
 
-        return new
+        return new UserDetailsDto
         {
-            user.Id,
-            user.Name,
-            user.Email,
-            user.AvatarUrl,
-            user.Active,
-            user.CreatedAt,
+            Id = user.Id,
+            Name = user.Name,
+            Email = user.Email,
+            AvatarUrl = user.AvatarUrl,
+            Active = user.Active,
+            CreatedAt = user.CreatedAt,
             Companies = companies,
             UserRoles = userRoles,
             TenantRoles = tenantRoles,
