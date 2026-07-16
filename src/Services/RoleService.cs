@@ -19,7 +19,7 @@ public class RoleService
         _auditService = auditService;
     }
 
-    public async Task<PaginatedResponseDto<object>> GetAll(int page, int perPage, string sortBy = "name", string sortDir = "asc", string? search = null)
+    public async Task<PaginatedResponseDto<RoleResponseDto>> GetAll(int page, int perPage, string sortBy = "name", string sortDir = "asc", string? search = null)
     {
         var query = _context.Roles
             .Where(r => r.TenantId == _tenantContext.TenantId)
@@ -41,17 +41,17 @@ public class RoleService
         var roles = await query
             .Skip((page - 1) * perPage)
             .Take(perPage)
-            .Select(r => (object)new
+            .Select(r => new RoleResponseDto
             {
-                r.Id,
-                r.Name,
-                r.IsSystem,
-                r.CreatedAt,
+                Id = r.Id,
+                Name = r.Name,
+                IsSystem = r.IsSystem,
+                CreatedAt = r.CreatedAt,
                 PermissionCount = r.RolePermissions.Count
             })
             .ToListAsync();
 
-        return new PaginatedResponseDto<object>
+        return new PaginatedResponseDto<RoleResponseDto>
         {
             Data = roles,
             Total = total,
@@ -60,8 +60,7 @@ public class RoleService
             LastPage = lastPage
         };
     }
-
-    public async Task<object?> GetPermissions(int roleId)
+    public async Task<RoleDetailsDto?> GetPermissions(int roleId)
     {
         var role = await _context.Roles
             .Include(r => r.RolePermissions)
@@ -81,32 +80,31 @@ public class RoleService
             .Where(p => tenantModuleIds.Contains(p.ModuleId))
             .ToListAsync();
 
-        var grouped = allPermissions
+        var modules = allPermissions
             .GroupBy(p => new { p.Module.Id, p.Module.Name, p.Module.Slug })
-            .Select(g => new
+            .Select(g => new RoleDetailsModuleDto
             {
                 ModuleId = g.Key.Id,
                 ModuleName = g.Key.Name,
                 ModuleSlug = g.Key.Slug,
-                Permissions = g.Select(p => new
+                Permissions = g.Select(p => new RoleDetailsPermissionDto
                 {
-                    p.Id,
-                    p.Slug,
-                    p.Description,
+                    Id = p.Id,
+                    Slug = p.Slug,
+                    Description = p.Description,
                     IsGranted = role.RolePermissions.Any(rp => rp.PermissionId == p.Id)
                 }).ToList()
             })
             .ToList();
 
-        return new
+        return new RoleDetailsDto
         {
-            role.Id,
-            role.Name,
-            role.IsSystem,
-            Modules = grouped
+            Id = role.Id,
+            Name = role.Name,
+            IsSystem = role.IsSystem,
+            Modules = modules
         };
     }
-
     public async Task<bool> AddPermission(int roleId, int permissionId)
     {
         var exists = await _context.RolePermissions
@@ -138,7 +136,7 @@ public class RoleService
         return true;
     }
 
-    public async Task<object?> Create(string name)
+    public async Task<RoleResponseDto?> Create(string name)
     {
         var exists = await _context.Roles
             .AnyAsync(r => r.TenantId == _tenantContext.TenantId && r.Name == name);
@@ -157,10 +155,17 @@ public class RoleService
 
         await _auditService.LogAsync(AuditActions.Created, "Role", role.Id, newValues: new { role.Name });
 
-        return new { role.Id, role.Name, role.IsSystem, role.CreatedAt, PermissionCount = 0 };
+        return new RoleResponseDto
+        {
+            Id = role.Id,
+            Name = role.Name,
+            IsSystem = role.IsSystem,
+            CreatedAt = role.CreatedAt,
+            PermissionCount = 0
+        };
     }
 
-    public async Task<object?> Update(int roleId, string name)
+    public async Task<RoleResponseDto?> Update(int roleId, string name)
     {
         var role = await _context.Roles
             .FirstOrDefaultAsync(r => r.Id == roleId && r.TenantId == _tenantContext.TenantId);
@@ -170,11 +175,19 @@ public class RoleService
         role.Name = name;
         await _context.SaveChangesAsync();
 
-        await _auditService.LogAsync(AuditActions.Updated, "Role", role.Id, oldValues: new { OldName = oldName }, newValues: new { role.Name });
+        await _auditService.LogAsync(AuditActions.Updated, "Role", role.Id,
+            oldValues: new { OldName = oldName },
+            newValues: new { role.Name });
 
-        return new { role.Id, role.Name, role.IsSystem, role.CreatedAt };
+        return new RoleResponseDto
+        {
+            Id = role.Id,
+            Name = role.Name,
+            IsSystem = role.IsSystem,
+            CreatedAt = role.CreatedAt,
+            PermissionCount = await _context.RolePermissions.CountAsync(rp => rp.RoleId == role.Id)
+        };
     }
-
     public async Task<(bool Success, string? Error)> Delete(int roleId)
     {
         var role = await _context.Roles
