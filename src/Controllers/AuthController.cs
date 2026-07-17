@@ -102,8 +102,7 @@ public class AuthController : ControllerBase
         var validation = await _forgotPasswordValidator.ValidateAsync(dto);
         if (!validation.IsValid) return BadRequest(validation.Errors.Select(e => e.ErrorMessage));
 
-        var frontendUrl = _configuration["App:FrontendUrl"]!;
-        await _authService.ForgotPassword(dto.Email, frontendUrl, _emailService);
+        await _authService.ForgotPassword(dto.Email, _emailService);
 
         return Ok("Se o e-mail estiver cadastrado, você receberá as instruções em breve.");
     }

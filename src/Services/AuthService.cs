@@ -247,10 +247,16 @@ public class AuthService
         return new JwtSecurityTokenHandler().WriteToken(token);
     }
 
-    public async Task<bool> ForgotPassword(string email, string frontendUrl, EmailService emailService)
+    public async Task<bool> ForgotPassword(string email, EmailService emailService)
     {
-        var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == email);
+        var user = await _context.Users
+            .Include(u => u.Tenant)
+            .FirstOrDefaultAsync(u => u.Email == email);
         if (user is null) return true;
+
+        var domain = _configuration["App:Domain"]!;
+        var subdomain = user.Tenant?.Subdomain ?? "default";
+        var frontendUrl = $"https://{subdomain}.{domain}";
 
         var token = Guid.NewGuid().ToString();
         await _redis.StringSetAsync(
