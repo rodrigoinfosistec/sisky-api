@@ -5,8 +5,9 @@ namespace SiskyApi.Data.Seeders;
 
 public static class TenantSeeder
 {
-    public static async Task SeedAsync(AppDbContext context, IWebHostEnvironment env)
+    public static async Task SeedAsync(AppDbContext context, IWebHostEnvironment env, IConfiguration configuration)
     {
+        var adminEmail = configuration["Admin:Email"]!;
         var modules = await context.Modules.ToListAsync();
         var permissions = await context.Permissions.ToListAsync();
 
@@ -28,7 +29,7 @@ public static class TenantSeeder
 
         // Atualiza o TenantId do administrador
         var admin = await context.Users
-            .FirstOrDefaultAsync(u => u.Email == "rodrigo.infosistec@gmail.com");
+            .FirstOrDefaultAsync(u => u.Email == adminEmail);
 
         if (admin != null && admin.TenantId is null)
         {
