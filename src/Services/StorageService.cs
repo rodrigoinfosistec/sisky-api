@@ -1,5 +1,6 @@
 using Amazon.S3;
 using Amazon.S3.Model;
+using SiskyApi.Constants;
 
 namespace SiskyApi.Services;
 
@@ -9,26 +10,16 @@ public class StorageService
     private readonly string _bucketName;
     private readonly string _publicUrl;
 
-    public StorageService(IConfiguration configuration)
+    public StorageService(IAmazonS3 s3Client, IConfiguration configuration)
     {
-        var accountId = configuration["Storage:AccountId"]!;
-        var accessKeyId = configuration["Storage:AccessKeyId"]!;
-        var secretAccessKey = configuration["Storage:SecretAccessKey"]!;
+        _s3Client = s3Client;
         _bucketName = configuration["Storage:BucketName"]!;
         _publicUrl = configuration["Storage:PublicUrl"]!;
-
-        var config = new AmazonS3Config
-        {
-            ServiceURL = $"https://{accountId}.r2.cloudflarestorage.com",
-            ForcePathStyle = true
-        };
-
-        _s3Client = new AmazonS3Client(accessKeyId, secretAccessKey, config);
     }
 
-    public async Task<string> UploadAsync(Stream fileStream, string fileName, string contentType)
+    public async Task<string> UploadAsync(Stream fileStream, string fileName, string contentType, string folder = StorageFolders.Avatars)
     {
-        var key = $"avatars/{Guid.NewGuid()}-{fileName}";
+        var key = $"{folder}/{Guid.NewGuid()}-{fileName}";
 
         var request = new PutObjectRequest
         {

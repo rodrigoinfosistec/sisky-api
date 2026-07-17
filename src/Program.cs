@@ -11,6 +11,7 @@ using SiskyApi.Data;
 using SiskyApi.Services;
 using Scalar.AspNetCore;
 using Resend;
+using Amazon.S3;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -58,6 +59,21 @@ builder.Services.AddSingleton<IResend>(_ =>
     {
         ApiToken = builder.Configuration["Mail:ApiKey"]!
     }));
+
+builder.Services.AddSingleton<IAmazonS3>(_ =>
+{
+    var accountId = builder.Configuration["Storage:AccountId"]!;
+    var accessKeyId = builder.Configuration["Storage:AccessKeyId"]!;
+    var secretAccessKey = builder.Configuration["Storage:SecretAccessKey"]!;
+
+    var config = new AmazonS3Config
+    {
+        ServiceURL = $"https://{accountId}.r2.cloudflarestorage.com",
+        ForcePathStyle = true
+    };
+
+    return new AmazonS3Client(accessKeyId, secretAccessKey, config);
+});
 
 builder.Services.AddValidatorsFromAssembly(typeof(Program).Assembly);
 
