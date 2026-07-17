@@ -9,8 +9,8 @@ using StackExchange.Redis;
 using SiskyApi.Authorization;
 using SiskyApi.Data;
 using SiskyApi.Services;
-using SiskyApi.Validators;
 using Scalar.AspNetCore;
+using Resend;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -52,6 +52,12 @@ builder.Services.AddSingleton<IConnectionMultiplexer>(sp =>
 
     return ConnectionMultiplexer.Connect(options);
 });
+
+builder.Services.AddSingleton<IResend>(_ =>
+    ResendClient.Create(new ResendClientOptions
+    {
+        ApiToken = builder.Configuration["Mail:ApiKey"]!
+    }));
 
 builder.Services.AddValidatorsFromAssembly(typeof(Program).Assembly);
 
