@@ -11,20 +11,25 @@ public static class UserSeeder
         var adminEmail = configuration["Admin:Email"]!;
         var adminPassword = configuration["Admin:Password"]!;
 
-        var exists = await context.Users
-            .AnyAsync(u => u.Email == adminEmail);
+        var admin = await context.Users.FirstOrDefaultAsync(u => u.Email == adminEmail);
 
-        if (!exists)
+        if (admin is null)
         {
-            var admin = new User
+            admin = new User
             {
                 Name = "Administrador",
                 Email = adminEmail,
                 Password = BCrypt.Net.BCrypt.HashPassword(adminPassword),
                 Active = true,
+                IsSuperAdmin = true,
                 CreatedAt = DateTime.UtcNow
             };
             context.Users.Add(admin);
+            await context.SaveChangesAsync();
+        }
+        else if (!admin.IsSuperAdmin)
+        {
+            admin.IsSuperAdmin = true;
             await context.SaveChangesAsync();
         }
 

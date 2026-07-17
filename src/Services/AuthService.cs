@@ -34,7 +34,11 @@ public class AuthService
 
         var (companyId, tenantId, roles, permissions) = await GetUserCompanyContext(user.Id);
 
-        var token = GenerateJwtToken(user.Id, user.Email, user.Name, tenantId, companyId, roles, permissions);
+        var token = GenerateJwtToken(
+            user.Id, user.Email, user.Name,
+            tenantId, companyId, roles, permissions,
+            isSuperAdmin: user.IsSuperAdmin);
+
         var expiresAt = DateTime.UtcNow.AddHours(double.Parse(_configuration["Jwt:ExpiresInHours"]!));
 
         var session = new SessionInfoDto
@@ -90,7 +94,7 @@ public class AuthService
             user.Id.ToString(),
             TimeSpan.FromDays(30));
 
-        var newToken = GenerateJwtToken(user.Id, user.Email, user.Name);
+        var newToken = GenerateJwtToken(user.Id, user.Email, user.Name, isSuperAdmin: user.IsSuperAdmin);
         return newToken;
     }
 
@@ -207,7 +211,7 @@ public class AuthService
         return (userCompany.CompanyId, userCompany.Company.TenantId, roles, permissions);
     }
 
-    private string GenerateJwtToken(int id, string email, string name, int? tenantId = null, int? companyId = null, List<string>? roles = null, List<string>? permissions = null)
+    private string GenerateJwtToken(int id, string email, string name, int? tenantId = null, int? companyId = null, List<string>? roles = null, List<string>? permissions = null, bool isSuperAdmin = false)
     {
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_configuration["Jwt:Key"]!));
         var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
@@ -218,6 +222,9 @@ public class AuthService
             new Claim(ClaimTypes.Email, email),
             new Claim(ClaimTypes.Name, name),
         };
+
+        if (isSuperAdmin)
+            claims.Add(new Claim("is_super_admin", "true"));
 
         if (tenantId.HasValue)
             claims.Add(new Claim("tenant_id", tenantId.Value.ToString()));
@@ -303,6 +310,6 @@ public class AuthService
 
         await _auditService.LogAsync(AuditActions.SwitchedCompany, "User", userId, newValues: new { CompanyId = cId });
 
-        return GenerateJwtToken(user.Id, user.Email, user.Name, tenantId, cId, roles, permissions);
+        return GenerateJwtToken(user.Id, user.Email, user.Name, tenantId, cId, roles, permissions, isSuperAdmin: user.IsSuperAdmin);
     }
 }

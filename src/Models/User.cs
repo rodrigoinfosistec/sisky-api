@@ -13,6 +13,7 @@ public class User
     public string Password { get; set; } = string.Empty;
     public string? AvatarUrl { get; set; }
     public bool Active { get; set; } = true;
+    public bool IsSuperAdmin { get; set; } = false;
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
     public ICollection<UserCompany> UserCompanies { get; set; } = new List<UserCompany>();

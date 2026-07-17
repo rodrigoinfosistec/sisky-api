@@ -94,6 +94,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     });
 
 builder.Services.AddSingleton<IAuthorizationHandler, PermissionHandler>();
+builder.Services.AddSingleton<IAuthorizationHandler, SuperAdminHandler>();
 
 builder.Services.AddAuthorization(options =>
 {
@@ -102,6 +103,9 @@ builder.Services.AddAuthorization(options =>
         options.AddPolicy(permission, policy =>
             policy.Requirements.Add(new PermissionRequirement(permission)));
     }
+
+    options.AddPolicy(RequireSuperAdminAttribute.PolicyName, policy =>
+        policy.Requirements.Add(new SuperAdminRequirement()));
 });
 
 builder.Services.AddMemoryCache();
