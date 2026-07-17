@@ -1,0 +1,55 @@
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: sisky-api
+    ports:
+      - "5169:8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ConnectionStrings__DefaultConnection=Host=postgres;Port=5432;Database=sisky;Username=sisky;Password=sisky
+      - ConnectionStrings__Redis=redis:6379
+      - Jwt__Key=YOUR_JWT_KEY
+      - Jwt__Issuer=sisky-api
+      - Jwt__Audience=sisky-client
+      - Jwt__ExpiresInHours=8
+      - Storage__AccountId=YOUR_STORAGE_ACCOUNT_ID
+      - Storage__AccessKeyId=YOUR_STORAGE_ACCESS_KEY_ID
+      - Storage__SecretAccessKey=YOUR_STORAGE_SECRET_KEY
+      - Storage__BucketName=YOUR_STORAGE_BUCKET
+      - Storage__PublicUrl=YOUR_STORAGE_PUBLIC_URL
+      - App__FrontendUrl=http://localhost:3000
+      - App__Domain=YOUR_DOMAIN
+      - Mail__ApiKey=YOUR_RESEND_API_KEY
+      - Mail__FromAddress=no-reply@yourdomain.com
+      - Mail__FromName=Sisky
+      - Admin__Email=YOUR_ADMIN_EMAIL
+      - Admin__Password=YOUR_ADMIN_PASSWORD
+    depends_on:
+      - postgres
+      - redis
+
+  postgres:
+    image: postgres:16
+    container_name: sisky-postgres
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_DB: sisky
+      POSTGRES_USER: sisky
+      POSTGRES_PASSWORD: sisky
+    volumes:
+      - sisky_pgdata:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7
+    container_name: sisky-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - sisky_redisdata:/data
+
+volumes:
+  sisky_pgdata:
+  sisky_redisdata:
