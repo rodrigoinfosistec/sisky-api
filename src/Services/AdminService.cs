@@ -1,0 +1,188 @@
+using Microsoft.EntityFrameworkCore;
+using SiskyApi.Data;
+using SiskyApi.DTOs;
+using SiskyApi.Models;
+
+namespace SiskyApi.Services;
+
+public class AdminService
+{
+    private readonly AppDbContext _context;
+
+    public AdminService(AppDbContext context)
+    {
+        _context = context;
+    }
+
+    public async Task<object> GetDashboard()
+    {
+        var totalTenants = await _context.Tenants.CountAsync();
+        var activeTenants = await _context.Tenants.CountAsync(t => t.Active);
+        var totalUsers = await _context.Users.CountAsync();
+        var newTenantsThisMonth = await _context.Tenants
+            .CountAsync(t => t.CreatedAt >= DateTime.UtcNow.AddMonths(-1));
+
+        return new
+        {
+            totalTenants,
+            activeTenants,
+            totalUsers,
+            newTenantsThisMonth
+        };
+    }
+
+    public async Task<PaginatedResponseDto<TenantResponseDto>> GetTenants(int page, int perPage, string? search)
+    {
+        var query = _context.Tenants.AsQueryable();
+
+        if (!string.IsNullOrWhiteSpace(search))
+            query = query.Where(t => t.Name.ToLower().Contains(search.ToLower()) ||
+                                     t.Subdomain.ToLower().Contains(search.ToLower()));
+
+        var total = await query.CountAsync();
+        var lastPage = (int)Math.Ceiling((double)total / perPage);
+
+        var tenants = await query
+            .OrderBy(t => t.Name)
+            .Skip((page - 1) * perPage)
+            .Take(perPage)
+            .Select(t => new TenantResponseDto
+            {
+                Id = t.Id,
+                Name = t.Name,
+                Subdomain = t.Subdomain,
+                Active = t.Active,
+                CreatedAt = t.CreatedAt,
+                UserCount = _context.Users.Count(u => u.TenantId == t.Id),
+                CompanyCount = _context.Companies.Count(c => c.TenantId == t.Id)
+            })
+            .ToListAsync();
+
+        return new PaginatedResponseDto<TenantResponseDto>
+        {
+            Data = tenants,
+            Total = total,
+            Page = page,
+            PerPage = perPage,
+            LastPage = lastPage
+        };
+    }
+
+    public async Task<TenantDetailsDto?> GetTenant(int id)
+    {
+        return await _context.Tenants
+            .Where(t => t.Id == id)
+            .Select(t => new TenantDetailsDto
+            {
+                Id = t.Id,
+                Name = t.Name,
+                Subdomain = t.Subdomain,
+                Active = t.Active,
+                CreatedAt = t.CreatedAt,
+                UserCount = _context.Users.Count(u => u.TenantId == t.Id),
+                Companies = _context.Companies
+                    .Where(c => c.TenantId == t.Id)
+                    .Select(c => new TenantDetailsCompanyDto
+                    {
+                        Id = c.Id,
+                        Name = c.Name,
+                        Active = c.Active
+                    })
+                    .ToList(),
+                Modules = _context.TenantModules
+                    .Where(tm => tm.TenantId == t.Id)
+                    .Select(tm => new TenantDetailsModuleDto
+                    {
+                        Id = tm.Module.Id,
+                        Name = tm.Module.Name,
+                        Slug = tm.Module.Slug,
+                        Active = tm.Active
+                    })
+                    .ToList()
+            })
+            .FirstOrDefaultAsync();
+    }
+
+    public async Task<TenantResponseDto> Create(TenantCreateDto dto)
+    {
+        var tenant = new Tenant
+        {
+            Name = dto.Name,
+            Subdomain = dto.Subdomain.ToLower(),
+            Active = true,
+            CreatedAt = DateTime.UtcNow
+        };
+
+        _context.Tenants.Add(tenant);
+        await _context.SaveChangesAsync();
+
+        var modules = await _context.Modules.Where(m => m.Active).ToListAsync();
+        foreach (var module in modules)
+        {
+            _context.TenantModules.Add(new TenantModule
+            {
+                TenantId = tenant.Id,
+                ModuleId = module.Id,
+                Active = true
+            });
+        }
+        await _context.SaveChangesAsync();
+
+        return new TenantResponseDto
+        {
+            Id = tenant.Id,
+            Name = tenant.Name,
+            Subdomain = tenant.Subdomain,
+            Active = tenant.Active,
+            CreatedAt = tenant.CreatedAt,
+            UserCount = 0,
+            CompanyCount = 0
+        };
+    }
+
+    public async Task<TenantResponseDto?> Update(int id, TenantUpdateDto dto)
+    {
+        var tenant = await _context.Tenants.FindAsync(id);
+        if (tenant is null) return null;
+
+        tenant.Name = dto.Name;
+        await _context.SaveChangesAsync();
+
+        return new TenantResponseDto
+        {
+            Id = tenant.Id,
+            Name = tenant.Name,
+            Subdomain = tenant.Subdomain,
+            Active = tenant.Active,
+            CreatedAt = tenant.CreatedAt,
+            UserCount = await _context.Users.CountAsync(u => u.TenantId == tenant.Id),
+            CompanyCount = await _context.Companies.CountAsync(c => c.TenantId == tenant.Id)
+        };
+    }
+
+    public async Task<(bool Success, string? Error)> Delete(int id)
+    {
+        var tenant = await _context.Tenants.FindAsync(id);
+        if (tenant is null) return (false, "Tenant não encontrado.");
+
+        var hasUsers = await _context.Users.AnyAsync(u => u.TenantId == id);
+        if (hasUsers)
+            return (false, "Este tenant possui usuários associados. Remova-os antes de excluir.");
+
+        _context.Tenants.Remove(tenant);
+        await _context.SaveChangesAsync();
+
+        return (true, null);
+    }
+
+    public async Task<(bool Success, bool? Active)> ToggleActive(int id)
+    {
+        var tenant = await _context.Tenants.FindAsync(id);
+        if (tenant is null) return (false, null);
+
+        tenant.Active = !tenant.Active;
+        await _context.SaveChangesAsync();
+
+        return (true, tenant.Active);
+    }
+}

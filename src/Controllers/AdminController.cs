@@ -1,9 +1,8 @@
-using System.Security.Claims;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
+using FluentValidation;
 using SiskyApi.Authorization;
-using SiskyApi.Data;
 using SiskyApi.DTOs;
+using SiskyApi.Services;
 
 namespace SiskyApi.Controllers;
 
@@ -12,11 +11,25 @@ namespace SiskyApi.Controllers;
 [Route("api/admin")]
 public class AdminController : ControllerBase
 {
-    private readonly AppDbContext _context;
+    private readonly AdminService _adminService;
+    private readonly IValidator<TenantCreateDto> _createValidator;
+    private readonly IValidator<TenantUpdateDto> _updateValidator;
 
-    public AdminController(AppDbContext context)
+    public AdminController(
+        AdminService adminService,
+        IValidator<TenantCreateDto> createValidator,
+        IValidator<TenantUpdateDto> updateValidator)
     {
-        _context = context;
+        _adminService = adminService;
+        _createValidator = createValidator;
+        _updateValidator = updateValidator;
+    }
+
+    [HttpGet("dashboard")]
+    public async Task<IActionResult> GetDashboard()
+    {
+        var metrics = await _adminService.GetDashboard();
+        return Ok(metrics);
     }
 
     [HttpGet("tenants")]
@@ -25,96 +38,54 @@ public class AdminController : ControllerBase
         [FromQuery] int perPage = 15,
         [FromQuery] string? search = null)
     {
-        var query = _context.Tenants.AsQueryable();
-
-        if (!string.IsNullOrWhiteSpace(search))
-            query = query.Where(t => t.Name.ToLower().Contains(search.ToLower()) ||
-                                     t.Subdomain.ToLower().Contains(search.ToLower()));
-
-        var total = await query.CountAsync();
-        var lastPage = (int)Math.Ceiling((double)total / perPage);
-
-        var tenants = await query
-            .OrderBy(t => t.Name)
-            .Skip((page - 1) * perPage)
-            .Take(perPage)
-            .Select(t => new
-            {
-                t.Id,
-                t.Name,
-                t.Subdomain,
-                t.Active,
-                t.CreatedAt,
-                UserCount = _context.Users.Count(u => u.TenantId == t.Id),
-                CompanyCount = _context.Companies.Count(c => c.TenantId == t.Id)
-            })
-            .ToListAsync();
-
-        return Ok(new PaginatedResponseDto<object>
-        {
-            Data = tenants.Cast<object>().ToList(),
-            Total = total,
-            Page = page,
-            PerPage = perPage,
-            LastPage = lastPage
-        });
+        var result = await _adminService.GetTenants(page, perPage, search);
+        return Ok(result);
     }
 
     [HttpGet("tenants/{id}")]
     public async Task<IActionResult> GetTenant(int id)
     {
-        var tenant = await _context.Tenants
-            .Where(t => t.Id == id)
-            .Select(t => new
-            {
-                t.Id,
-                t.Name,
-                t.Subdomain,
-                t.Active,
-                t.CreatedAt,
-                UserCount = _context.Users.Count(u => u.TenantId == t.Id),
-                Companies = _context.Companies
-                    .Where(c => c.TenantId == t.Id)
-                    .Select(c => new { c.Id, c.Name, c.Active })
-                    .ToList(),
-                Modules = _context.TenantModules
-                    .Where(tm => tm.TenantId == t.Id)
-                    .Select(tm => new { tm.Module.Id, tm.Module.Name, tm.Module.Slug, tm.Active })
-                    .ToList()
-            })
-            .FirstOrDefaultAsync();
-
+        var tenant = await _adminService.GetTenant(id);
         if (tenant is null) return NotFound();
         return Ok(tenant);
+    }
+
+    [HttpPost("tenants")]
+    public async Task<IActionResult> CreateTenant([FromBody] TenantCreateDto dto)
+    {
+        var validation = await _createValidator.ValidateAsync(dto);
+        if (!validation.IsValid)
+            return BadRequest(validation.Errors.Select(e => e.ErrorMessage));
+
+        var tenant = await _adminService.Create(dto);
+        return CreatedAtAction(nameof(GetTenant), new { id = tenant.Id }, tenant);
+    }
+
+    [HttpPut("tenants/{id}")]
+    public async Task<IActionResult> UpdateTenant(int id, [FromBody] TenantUpdateDto dto)
+    {
+        var validation = await _updateValidator.ValidateAsync(dto);
+        if (!validation.IsValid)
+            return BadRequest(validation.Errors.Select(e => e.ErrorMessage));
+
+        var tenant = await _adminService.Update(id, dto);
+        if (tenant is null) return NotFound();
+        return Ok(tenant);
+    }
+
+    [HttpDelete("tenants/{id}")]
+    public async Task<IActionResult> DeleteTenant(int id)
+    {
+        var (success, error) = await _adminService.Delete(id);
+        if (!success) return BadRequest(error);
+        return NoContent();
     }
 
     [HttpPatch("tenants/{id}/toggle-active")]
     public async Task<IActionResult> ToggleTenantActive(int id)
     {
-        var tenant = await _context.Tenants.FindAsync(id);
-        if (tenant is null) return NotFound();
-
-        tenant.Active = !tenant.Active;
-        await _context.SaveChangesAsync();
-
-        return Ok(new { tenant.Id, tenant.Active });
-    }
-
-    [HttpGet("dashboard")]
-    public async Task<IActionResult> GetDashboard()
-    {
-        var totalTenants = await _context.Tenants.CountAsync();
-        var activeTenants = await _context.Tenants.CountAsync(t => t.Active);
-        var totalUsers = await _context.Users.CountAsync();
-        var newTenantsThisMonth = await _context.Tenants
-            .CountAsync(t => t.CreatedAt >= DateTime.UtcNow.AddMonths(-1));
-
-        return Ok(new
-        {
-            totalTenants,
-            activeTenants,
-            totalUsers,
-            newTenantsThisMonth
-        });
+        var (success, active) = await _adminService.ToggleActive(id);
+        if (!success) return NotFound();
+        return Ok(new { id, active });
     }
 }
