@@ -55,8 +55,9 @@ public class DynamicCorsMiddleware
             var uri = new Uri(origin);
 
             if (uri.Host == "localhost") return true;
-            if (uri.Host == $"www.{_domain}") return true;
             if (uri.Host == _domain) return true;
+            if (uri.Host == $"www.{_domain}") return true;
+            if (uri.Host == $"admin.{_domain}") return true; // ← adiciona
 
             if (uri.Host.EndsWith($".{_domain}"))
             {
