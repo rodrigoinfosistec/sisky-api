@@ -88,4 +88,19 @@ public class AdminController : ControllerBase
         if (!success) return NotFound();
         return Ok(new { id, active });
     }
+
+    [HttpGet("audit")]
+    public async Task<IActionResult> GetAuditLogs(
+    [FromQuery] int page = 1,
+    [FromQuery] int perPage = 20,
+    [FromQuery] int? tenantId = null,
+    [FromQuery] string? search = null,
+    [FromQuery] string? action = null,
+    [FromQuery] string? entity = null,
+    [FromQuery] DateTime? from = null,
+    [FromQuery] DateTime? to = null)
+    {
+        var result = await _adminService.GetAuditLogs(page, perPage, tenantId, search, action, entity, from, to);
+        return Ok(result);
+    }
 }

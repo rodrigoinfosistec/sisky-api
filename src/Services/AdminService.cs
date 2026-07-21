@@ -185,4 +185,68 @@ public class AdminService
 
         return (true, tenant.Active);
     }
+
+    public async Task<PaginatedResponseDto<AuditLogResponseDto>> GetAuditLogs(
+        int page,
+        int perPage,
+        int? tenantId,
+        string? search,
+        string? action,
+        string? entity,
+        DateTime? from,
+        DateTime? to)
+    {
+        var query = _context.AuditLogs.AsQueryable();
+
+        if (tenantId.HasValue)
+            query = query.Where(a => a.TenantId == tenantId);
+
+        if (!string.IsNullOrWhiteSpace(search))
+            query = query.Where(a => a.UserName.ToLower().Contains(search.ToLower()));
+
+        if (!string.IsNullOrWhiteSpace(action))
+            query = query.Where(a => a.Action == action);
+
+        if (!string.IsNullOrWhiteSpace(entity))
+            query = query.Where(a => a.Entity == entity);
+
+        if (from.HasValue)
+            query = query.Where(a => a.CreatedAt >= from.Value.ToUniversalTime());
+
+        if (to.HasValue)
+            query = query.Where(a => a.CreatedAt <= to.Value.ToUniversalTime().AddDays(1));
+
+        var total = await query.CountAsync();
+        var lastPage = (int)Math.Ceiling((double)total / perPage);
+
+        var logs = await query
+            .OrderByDescending(a => a.CreatedAt)
+            .Skip((page - 1) * perPage)
+            .Take(perPage)
+            .Select(a => new AuditLogResponseDto
+            {
+                Id = a.Id,
+                TenantId = a.TenantId,
+                CompanyId = a.CompanyId,
+                UserId = a.UserId,
+                UserName = a.UserName,
+                Action = a.Action,
+                Entity = a.Entity,
+                EntityId = a.EntityId,
+                OldValues = a.OldValues,
+                NewValues = a.NewValues,
+                IpAddress = a.IpAddress,
+                CreatedAt = a.CreatedAt
+            })
+            .ToListAsync();
+
+        return new PaginatedResponseDto<AuditLogResponseDto>
+        {
+            Data = logs,
+            Total = total,
+            Page = page,
+            PerPage = perPage,
+            LastPage = lastPage
+        };
+    }
 }
