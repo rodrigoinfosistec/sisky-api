@@ -3,6 +3,7 @@ using FluentValidation;
 using SiskyApi.Authorization;
 using SiskyApi.DTOs;
 using SiskyApi.Services;
+using System.Security.Claims;
 
 namespace SiskyApi.Controllers;
 
@@ -102,5 +103,43 @@ public class AdminController : ControllerBase
     {
         var result = await _adminService.GetAuditLogs(page, perPage, tenantId, search, action, entity, from, to);
         return Ok(result);
+    }
+
+    [HttpGet("tickets")]
+    public async Task<IActionResult> GetTickets(
+    [FromQuery] int page = 1,
+    [FromQuery] int perPage = 15,
+    [FromQuery] int? tenantId = null,
+    [FromQuery] string? status = null,
+    [FromQuery] string? priority = null,
+    [FromQuery] string? search = null)
+    {
+        var result = await _adminService.GetTickets(page, perPage, tenantId, status, priority, search);
+        return Ok(result);
+    }
+
+    [HttpGet("tickets/{id}")]
+    public async Task<IActionResult> GetTicket(int id)
+    {
+        var ticket = await _adminService.GetTicket(id);
+        if (ticket is null) return NotFound();
+        return Ok(ticket);
+    }
+
+    [HttpPost("tickets/{id}/messages")]
+    public async Task<IActionResult> AddAdminMessage(int id, [FromBody] TicketMessageCreateDto dto)
+    {
+        var adminUserId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+        var message = await _adminService.AddAdminMessage(id, dto, adminUserId);
+        if (message is null) return NotFound();
+        return Ok(message);
+    }
+
+    [HttpPatch("tickets/{id}/status")]
+    public async Task<IActionResult> UpdateTicketStatus(int id, [FromBody] string status)
+    {
+        var (success, error) = await _adminService.UpdateTicketStatus(id, status);
+        if (!success) return BadRequest(error);
+        return Ok();
     }
 }
