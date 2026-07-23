@@ -21,6 +21,8 @@ public class AppDbContext : DbContext
     public DbSet<RolePermission> RolePermissions { get; set; }
     public DbSet<UserRole> UserRoles { get; set; }
     public DbSet<AuditLog> AuditLogs { get; set; }
+    public DbSet<Ticket> Tickets { get; set; }
+    public DbSet<TicketMessage> TicketMessages { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -60,5 +62,31 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<Permission>()
             .HasIndex(p => new { p.ModuleId, p.Slug })
             .IsUnique();
+
+        // Ticket — relacionamentos
+        modelBuilder.Entity<Ticket>()
+            .HasOne(t => t.Tenant)
+            .WithMany()
+            .HasForeignKey(t => t.TenantId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<Ticket>()
+            .HasOne(t => t.Company)
+            .WithMany()
+            .HasForeignKey(t => t.CompanyId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<Ticket>()
+            .HasOne(t => t.User)
+            .WithMany()
+            .HasForeignKey(t => t.UserId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        // TicketMessage — relacionamentos
+        modelBuilder.Entity<TicketMessage>()
+            .HasOne(m => m.Ticket)
+            .WithMany(t => t.Messages)
+            .HasForeignKey(m => m.TicketId)
+            .OnDelete(DeleteBehavior.Cascade);
     }
 }
