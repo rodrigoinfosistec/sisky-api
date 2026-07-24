@@ -1,18 +1,20 @@
 using Microsoft.EntityFrameworkCore;
+using SiskyApi.Constants;
 using SiskyApi.Data;
 using SiskyApi.DTOs;
 using SiskyApi.Models;
-using SiskyApi.Constants;
 
 namespace SiskyApi.Services;
 
 public class AdminService
 {
     private readonly AppDbContext _context;
+    private readonly EmailService _emailService;
 
-    public AdminService(AppDbContext context)
+    public AdminService(AppDbContext context, EmailService emailService)
     {
         _context = context;
+        _emailService = emailService;
     }
 
     public async Task<object> GetDashboard()
@@ -188,14 +190,8 @@ public class AdminService
     }
 
     public async Task<PaginatedResponseDto<AuditLogResponseDto>> GetAuditLogs(
-        int page,
-        int perPage,
-        int? tenantId,
-        string? search,
-        string? action,
-        string? entity,
-        DateTime? from,
-        DateTime? to)
+        int page, int perPage, int? tenantId, string? search,
+        string? action, string? entity, DateTime? from, DateTime? to)
     {
         var query = _context.AuditLogs.AsQueryable();
 
@@ -252,12 +248,8 @@ public class AdminService
     }
 
     public async Task<PaginatedResponseDto<TicketResponseDto>> GetTickets(
-    int page,
-    int perPage,
-    int? tenantId,
-    string? status,
-    string? priority,
-    string? search)
+        int page, int perPage, int? tenantId,
+        string? status, string? priority, string? search)
     {
         var query = _context.Tickets.AsQueryable();
 
@@ -347,7 +339,11 @@ public class AdminService
 
     public async Task<TicketMessageDto?> AddAdminMessage(int ticketId, TicketMessageCreateDto dto, int adminUserId)
     {
-        var ticket = await _context.Tickets.FindAsync(ticketId);
+        var ticket = await _context.Tickets
+            .Include(t => t.Tenant)
+            .Include(t => t.User)
+            .FirstOrDefaultAsync(t => t.Id == ticketId);
+
         if (ticket is null) return null;
 
         var admin = await _context.Users.FindAsync(adminUserId);
@@ -370,6 +366,19 @@ public class AdminService
 
         await _context.SaveChangesAsync();
 
+        // E-mail ao tenant quando admin responde
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                await _emailService.SendTicketReplyToTenantAsync(
+                    ticket.User.Email, ticket.UserName,
+                    ticket.Id, ticket.Title,
+                    dto.Message, ticket.Tenant.Subdomain);
+            }
+            catch { /* ignora erro de e-mail */ }
+        });
+
         return new TicketMessageDto
         {
             Id = message.Id,
@@ -386,12 +395,31 @@ public class AdminService
         if (!TicketStatus.All.Contains(status))
             return (false, "Status inválido.");
 
-        var ticket = await _context.Tickets.FindAsync(ticketId);
+        var ticket = await _context.Tickets
+            .Include(t => t.Tenant)
+            .Include(t => t.User)
+            .FirstOrDefaultAsync(t => t.Id == ticketId);
+
         if (ticket is null) return (false, "Ticket não encontrado.");
 
+        var oldStatus = ticket.Status;
         ticket.Status = status;
         ticket.UpdatedAt = DateTime.UtcNow;
         await _context.SaveChangesAsync();
+
+        // E-mail ao tenant quando status muda
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                await _emailService.SendTicketStatusChangedAsync(
+                    ticket.User.Email, ticket.UserName,
+                    ticket.Id, ticket.Title,
+                    oldStatus, status,
+                    ticket.Tenant.Subdomain);
+            }
+            catch { /* ignora erro de e-mail */ }
+        });
 
         return (true, null);
     }

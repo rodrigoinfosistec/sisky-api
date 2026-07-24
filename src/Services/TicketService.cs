@@ -10,11 +10,13 @@ public class TicketService
 {
     private readonly AppDbContext _context;
     private readonly TenantContext _tenantContext;
+    private readonly EmailService _emailService;
 
-    public TicketService(AppDbContext context, TenantContext tenantContext)
+    public TicketService(AppDbContext context, TenantContext tenantContext, EmailService emailService)
     {
         _context = context;
         _tenantContext = tenantContext;
+        _emailService = emailService;
     }
 
     public async Task<PaginatedResponseDto<TicketResponseDto>> GetAll(
@@ -136,6 +138,23 @@ public class TicketService
         _context.Tickets.Add(ticket);
         await _context.SaveChangesAsync();
 
+        // E-mails — fire and forget para não bloquear a resposta
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                await _emailService.SendTicketOpenedToTenantAsync(
+                    user.Email, user.Name, ticket.Id,
+                    ticket.Title, ticket.Priority,
+                    ticket.CompanyName, tenant.Subdomain);
+
+                await _emailService.SendTicketOpenedToAdminAsync(
+                    ticket.Id, ticket.Title, ticket.Priority,
+                    ticket.CompanyName, ticket.TenantName, user.Name);
+            }
+            catch { /* ignora erro de e-mail */ }
+        });
+
         return new TicketResponseDto
         {
             Id = ticket.Id,
@@ -158,6 +177,7 @@ public class TicketService
     public async Task<TicketMessageDto?> AddMessage(int ticketId, TicketMessageCreateDto dto, int userId, bool isAdminReply = false)
     {
         var ticket = await _context.Tickets
+            .Include(t => t.Tenant)
             .FirstOrDefaultAsync(t => t.Id == ticketId &&
                                       t.TenantId == _tenantContext.TenantId &&
                                       t.CompanyId == _tenantContext.CompanyId);
@@ -184,6 +204,17 @@ public class TicketService
 
         await _context.SaveChangesAsync();
 
+        // E-mail ao admin quando tenant responde
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                await _emailService.SendTicketReplyToAdminAsync(
+                    ticket.Id, ticket.Title, dto.Message, user.Name);
+            }
+            catch { /* ignora erro de e-mail */ }
+        });
+
         return new TicketMessageDto
         {
             Id = message.Id,
@@ -201,14 +232,31 @@ public class TicketService
             return (false, "Status inválido.");
 
         var ticket = await _context.Tickets
+            .Include(t => t.Tenant)
+            .Include(t => t.User)
             .FirstOrDefaultAsync(t => t.Id == ticketId &&
                                       t.TenantId == _tenantContext.TenantId);
 
         if (ticket is null) return (false, "Ticket não encontrado.");
 
+        var oldStatus = ticket.Status;
         ticket.Status = status;
         ticket.UpdatedAt = DateTime.UtcNow;
         await _context.SaveChangesAsync();
+
+        // E-mail ao tenant quando status muda
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                await _emailService.SendTicketStatusChangedAsync(
+                    ticket.User.Email, ticket.UserName,
+                    ticket.Id, ticket.Title,
+                    oldStatus, status,
+                    ticket.Tenant.Subdomain);
+            }
+            catch { /* ignora erro de e-mail */ }
+        });
 
         return (true, null);
     }

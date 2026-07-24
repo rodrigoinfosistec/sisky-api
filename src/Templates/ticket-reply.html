@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Nova resposta no ticket</title>
+</head>
+
+<body style="margin: 0; padding: 0; background-color: #f4f4f4; font-family: sans-serif;">
+    <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f4f4f4; padding: 40px 0;">
+        <tr>
+            <td align="center">
+                <table width="600" cellpadding="0" cellspacing="0"
+                    style="background-color: #ffffff; border-radius: 8px; overflow: hidden;">
+                    <tr>
+                        <td style="background-color: #111111; padding: 32px; text-align: center;">
+                            <h1 style="color: #ffffff; margin: 0; font-size: 24px;">Sisky</h1>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 40px 32px;">
+                            <h2 style="color: #111111; margin: 0 0 16px;">Nova resposta no ticket #{{ticketId}}</h2>
+                            <p style="color: #444444; margin: 0 0 12px;">Olá, {{toName}}!</p>
+                            <p style="color: #444444; margin: 0 0 24px;">{{senderName}} respondeu ao ticket
+                                <strong>{{ticketTitle}}</strong>:</p>
+                            <table width="100%" cellpadding="0" cellspacing="0"
+                                style="background-color: #f4f4f4; border-radius: 8px; padding: 16px; margin: 0 0 24px; border-left: 4px solid #111111;">
+                                <tr>
+                                    <td>
+                                        <p style="color: #444444; margin: 0;">{{replyMessage}}</p>
+                                    </td>
+                                </tr>
+                            </table>
+                            <a href="{{ticketUrl}}"
+                                style="display: inline-block; padding: 12px 24px; background-color: #111111; color: #ffffff; text-decoration: none; border-radius: 8px; font-weight: bold;">
+                                Ver ticket
+                            </a>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="background-color: #f4f4f4; padding: 24px 32px; text-align: center;">
+                            <p style="color: #888888; font-size: 12px; margin: 0;">© {{year}} Sisky. Todos os direitos
+                                reservados.</p>
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
+</body>
+
+</html>
