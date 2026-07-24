@@ -2,6 +2,7 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
 using System.Text.Json;
+using Hangfire;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using StackExchange.Redis;
@@ -254,7 +255,7 @@ public class AuthService
         return new JwtSecurityTokenHandler().WriteToken(token);
     }
 
-    public async Task<bool> ForgotPassword(string email, EmailService emailService)
+    public async Task<bool> ForgotPassword(string email)
     {
         var user = await _context.Users
             .Include(u => u.Tenant)
@@ -272,7 +273,9 @@ public class AuthService
             TimeSpan.FromHours(1));
 
         var resetLink = $"{frontendUrl}/reset-password?token={token}";
-        await emailService.SendPasswordResetAsync(user.Email, user.Name, resetLink);
+
+        BackgroundJob.Enqueue<EmailService>(x =>
+            x.SendPasswordResetAsync(user.Email, user.Name, resetLink));
 
         return true;
     }

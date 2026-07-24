@@ -1,3 +1,4 @@
+using Hangfire;
 using Microsoft.EntityFrameworkCore;
 using SiskyApi.Constants;
 using SiskyApi.Data;
@@ -10,14 +11,12 @@ public class TicketService
 {
     private readonly AppDbContext _context;
     private readonly TenantContext _tenantContext;
-    private readonly EmailService _emailService;
     private readonly SettingsService _settingsService;
 
-    public TicketService(AppDbContext context, TenantContext tenantContext, EmailService emailService, SettingsService settingsService)
+    public TicketService(AppDbContext context, TenantContext tenantContext, SettingsService settingsService)
     {
         _context = context;
         _tenantContext = tenantContext;
-        _emailService = emailService;
         _settingsService = settingsService;
     }
 
@@ -138,22 +137,17 @@ public class TicketService
 
         var supportEmail = await _settingsService.Get("support_email");
 
-        _ = Task.Run(async () =>
-        {
-            try
-            {
-                await _emailService.SendTicketOpenedToTenantAsync(
-                    user.Email, user.Name, ticket.Id,
-                    ticket.Title, ticket.Priority,
-                    ticket.CompanyName, tenant.Subdomain);
+        BackgroundJob.Enqueue<EmailService>(x =>
+            x.SendTicketOpenedToTenantAsync(
+                user.Email, user.Name, ticket.Id,
+                ticket.Title, ticket.Priority,
+                ticket.CompanyName, tenant.Subdomain));
 
-                if (!string.IsNullOrEmpty(supportEmail))
-                    await _emailService.SendTicketOpenedToAdminAsync(
-                        supportEmail, ticket.Id, ticket.Title, ticket.Priority,
-                        ticket.CompanyName, ticket.TenantName, user.Name);
-            }
-            catch { /* ignora erro de e-mail */ }
-        });
+        if (!string.IsNullOrEmpty(supportEmail))
+            BackgroundJob.Enqueue<EmailService>(x =>
+                x.SendTicketOpenedToAdminAsync(
+                    supportEmail, ticket.Id, ticket.Title, ticket.Priority,
+                    ticket.CompanyName, ticket.TenantName, user.Name));
 
         return new TicketResponseDto
         {
@@ -206,16 +200,10 @@ public class TicketService
 
         var supportEmail = await _settingsService.Get("support_email");
 
-        _ = Task.Run(async () =>
-        {
-            try
-            {
-                if (!string.IsNullOrEmpty(supportEmail))
-                    await _emailService.SendTicketReplyToAdminAsync(
-                        supportEmail, ticket.Id, ticket.Title, dto.Message, user.Name);
-            }
-            catch { /* ignora erro de e-mail */ }
-        });
+        if (!string.IsNullOrEmpty(supportEmail))
+            BackgroundJob.Enqueue<EmailService>(x =>
+                x.SendTicketReplyToAdminAsync(
+                    supportEmail, ticket.Id, ticket.Title, dto.Message, user.Name));
 
         return new TicketMessageDto
         {
@@ -246,18 +234,12 @@ public class TicketService
         ticket.UpdatedAt = DateTime.UtcNow;
         await _context.SaveChangesAsync();
 
-        _ = Task.Run(async () =>
-        {
-            try
-            {
-                await _emailService.SendTicketStatusChangedAsync(
-                    ticket.User.Email, ticket.UserName,
-                    ticket.Id, ticket.Title,
-                    oldStatus, status,
-                    ticket.Tenant.Subdomain);
-            }
-            catch { /* ignora erro de e-mail */ }
-        });
+        BackgroundJob.Enqueue<EmailService>(x =>
+            x.SendTicketStatusChangedAsync(
+                ticket.User.Email, ticket.UserName,
+                ticket.Id, ticket.Title,
+                oldStatus, status,
+                ticket.Tenant.Subdomain));
 
         return (true, null);
     }

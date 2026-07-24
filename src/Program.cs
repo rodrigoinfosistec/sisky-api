@@ -12,6 +12,8 @@ using SiskyApi.Services;
 using Scalar.AspNetCore;
 using Resend;
 using Amazon.S3;
+using Hangfire;
+using Hangfire.PostgreSql;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -78,6 +80,16 @@ builder.Services.AddSingleton<IAmazonS3>(_ =>
     return new AmazonS3Client(accessKeyId, secretAccessKey, config);
 });
 
+builder.Services.AddHangfire(config => config
+    .SetDataCompatibilityLevel(CompatibilityLevel.Version_180)
+    .UseSimpleAssemblyNameTypeSerializer()
+    .UseRecommendedSerializerSettings()
+    .UsePostgreSqlStorage(options =>
+        options.UseNpgsqlConnection(
+            builder.Configuration.GetConnectionString("DefaultConnection"))));
+
+builder.Services.AddHangfireServer();
+
 builder.Services.AddValidatorsFromAssembly(typeof(Program).Assembly);
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
@@ -134,6 +146,12 @@ app.UseMiddleware<SiskyApi.Middlewares.TokenBlacklistMiddleware>();
 app.UseMiddleware<SiskyApi.Middlewares.TenantMiddleware>();
 app.UseAuthentication();
 app.UseAuthorization();
+
+app.UseHangfireDashboard("/hangfire", new DashboardOptions
+{
+    Authorization = new[] { new HangfireAuthorizationFilter() }
+});
+
 app.MapControllers();
 
 using (var scope = app.Services.CreateScope())

@@ -1,3 +1,4 @@
+using Hangfire;
 using Microsoft.EntityFrameworkCore;
 using SiskyApi.Constants;
 using SiskyApi.Data;
@@ -9,13 +10,11 @@ namespace SiskyApi.Services;
 public class AdminService
 {
     private readonly AppDbContext _context;
-    private readonly EmailService _emailService;
     private readonly SettingsService _settingsService;
 
-    public AdminService(AppDbContext context, EmailService emailService, SettingsService settingsService)
+    public AdminService(AppDbContext context, SettingsService settingsService)
     {
         _context = context;
-        _emailService = emailService;
         _settingsService = settingsService;
     }
 
@@ -349,17 +348,11 @@ public class AdminService
 
         await _context.SaveChangesAsync();
 
-        _ = Task.Run(async () =>
-        {
-            try
-            {
-                await _emailService.SendTicketReplyToTenantAsync(
-                    ticket.User.Email, ticket.UserName,
-                    ticket.Id, ticket.Title,
-                    dto.Message, ticket.Tenant.Subdomain);
-            }
-            catch { /* ignora erro de e-mail */ }
-        });
+        BackgroundJob.Enqueue<EmailService>(x =>
+            x.SendTicketReplyToTenantAsync(
+                ticket.User.Email, ticket.UserName,
+                ticket.Id, ticket.Title,
+                dto.Message, ticket.Tenant.Subdomain));
 
         return new TicketMessageDto
         {
@@ -389,18 +382,12 @@ public class AdminService
         ticket.UpdatedAt = DateTime.UtcNow;
         await _context.SaveChangesAsync();
 
-        _ = Task.Run(async () =>
-        {
-            try
-            {
-                await _emailService.SendTicketStatusChangedAsync(
-                    ticket.User.Email, ticket.UserName,
-                    ticket.Id, ticket.Title,
-                    oldStatus, status,
-                    ticket.Tenant.Subdomain);
-            }
-            catch { /* ignora erro de e-mail */ }
-        });
+        BackgroundJob.Enqueue<EmailService>(x =>
+            x.SendTicketStatusChangedAsync(
+                ticket.User.Email, ticket.UserName,
+                ticket.Id, ticket.Title,
+                oldStatus, status,
+                ticket.Tenant.Subdomain));
 
         return (true, null);
     }
