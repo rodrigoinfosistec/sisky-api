@@ -23,6 +23,7 @@ public class AppDbContext : DbContext
     public DbSet<AuditLog> AuditLogs { get; set; }
     public DbSet<Ticket> Tickets { get; set; }
     public DbSet<TicketMessage> TicketMessages { get; set; }
+    public DbSet<Setting> Settings { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -88,5 +89,9 @@ public class AppDbContext : DbContext
             .WithMany(t => t.Messages)
             .HasForeignKey(m => m.TicketId)
             .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<Setting>()
+            .HasIndex(s => s.Key)
+            .IsUnique();
     }
 }

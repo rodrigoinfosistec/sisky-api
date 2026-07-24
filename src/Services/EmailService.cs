@@ -7,7 +7,6 @@ public class EmailService
     private readonly IResend _resend;
     private readonly string _fromAddress;
     private readonly string _fromName;
-    private readonly string _supportEmail;
     private readonly string _domain;
 
     public EmailService(IResend resend, IConfiguration configuration)
@@ -15,7 +14,6 @@ public class EmailService
         _resend = resend;
         _fromAddress = configuration["Mail:FromAddress"]!;
         _fromName = configuration["Mail:FromName"]!;
-        _supportEmail = configuration["Admin:SupportEmail"]!;
         _domain = configuration["App:Domain"]!;
     }
 
@@ -83,6 +81,7 @@ public class EmailService
     }
 
     public async Task SendTicketOpenedToAdminAsync(
+        string supportEmail,
         int ticketId,
         string ticketTitle,
         string ticketPriority,
@@ -111,7 +110,7 @@ public class EmailService
             .Replace("{{message}}", $"{userName} abriu um novo ticket de suporte.")
             .Replace("{{year}}", DateTime.UtcNow.Year.ToString());
 
-        await SendAsync(_supportEmail, $"Novo ticket #{ticketId} — {ticketTitle}", html);
+        await SendAsync(supportEmail, $"Novo ticket #{ticketId} — {ticketTitle}", html);
     }
 
     public async Task SendTicketReplyToTenantAsync(
@@ -138,6 +137,7 @@ public class EmailService
     }
 
     public async Task SendTicketReplyToAdminAsync(
+        string supportEmail,
         int ticketId,
         string ticketTitle,
         string replyMessage,
@@ -155,7 +155,7 @@ public class EmailService
             .Replace("{{ticketUrl}}", ticketUrl)
             .Replace("{{year}}", DateTime.UtcNow.Year.ToString());
 
-        await SendAsync(_supportEmail, $"Nova resposta no ticket #{ticketId} — {userName}", html);
+        await SendAsync(supportEmail, $"Nova resposta no ticket #{ticketId} — {userName}", html);
     }
 
     public async Task SendTicketStatusChangedAsync(

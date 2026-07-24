@@ -11,20 +11,18 @@ public class TicketService
     private readonly AppDbContext _context;
     private readonly TenantContext _tenantContext;
     private readonly EmailService _emailService;
+    private readonly SettingsService _settingsService;
 
-    public TicketService(AppDbContext context, TenantContext tenantContext, EmailService emailService)
+    public TicketService(AppDbContext context, TenantContext tenantContext, EmailService emailService, SettingsService settingsService)
     {
         _context = context;
         _tenantContext = tenantContext;
         _emailService = emailService;
+        _settingsService = settingsService;
     }
 
     public async Task<PaginatedResponseDto<TicketResponseDto>> GetAll(
-        int page,
-        int perPage,
-        string? status,
-        string? priority,
-        string? search)
+        int page, int perPage, string? status, string? priority, string? search)
     {
         var query = _context.Tickets
             .Where(t => t.TenantId == _tenantContext.TenantId &&
@@ -138,7 +136,8 @@ public class TicketService
         _context.Tickets.Add(ticket);
         await _context.SaveChangesAsync();
 
-        // E-mails — fire and forget para não bloquear a resposta
+        var supportEmail = await _settingsService.Get("support_email");
+
         _ = Task.Run(async () =>
         {
             try
@@ -148,9 +147,10 @@ public class TicketService
                     ticket.Title, ticket.Priority,
                     ticket.CompanyName, tenant.Subdomain);
 
-                await _emailService.SendTicketOpenedToAdminAsync(
-                    ticket.Id, ticket.Title, ticket.Priority,
-                    ticket.CompanyName, ticket.TenantName, user.Name);
+                if (!string.IsNullOrEmpty(supportEmail))
+                    await _emailService.SendTicketOpenedToAdminAsync(
+                        supportEmail, ticket.Id, ticket.Title, ticket.Priority,
+                        ticket.CompanyName, ticket.TenantName, user.Name);
             }
             catch { /* ignora erro de e-mail */ }
         });
@@ -204,13 +204,15 @@ public class TicketService
 
         await _context.SaveChangesAsync();
 
-        // E-mail ao admin quando tenant responde
+        var supportEmail = await _settingsService.Get("support_email");
+
         _ = Task.Run(async () =>
         {
             try
             {
-                await _emailService.SendTicketReplyToAdminAsync(
-                    ticket.Id, ticket.Title, dto.Message, user.Name);
+                if (!string.IsNullOrEmpty(supportEmail))
+                    await _emailService.SendTicketReplyToAdminAsync(
+                        supportEmail, ticket.Id, ticket.Title, dto.Message, user.Name);
             }
             catch { /* ignora erro de e-mail */ }
         });
@@ -244,7 +246,6 @@ public class TicketService
         ticket.UpdatedAt = DateTime.UtcNow;
         await _context.SaveChangesAsync();
 
-        // E-mail ao tenant quando status muda
         _ = Task.Run(async () =>
         {
             try

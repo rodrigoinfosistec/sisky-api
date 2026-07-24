@@ -10,11 +10,13 @@ public class AdminService
 {
     private readonly AppDbContext _context;
     private readonly EmailService _emailService;
+    private readonly SettingsService _settingsService;
 
-    public AdminService(AppDbContext context, EmailService emailService)
+    public AdminService(AppDbContext context, EmailService emailService, SettingsService settingsService)
     {
         _context = context;
         _emailService = emailService;
+        _settingsService = settingsService;
     }
 
     public async Task<object> GetDashboard()
@@ -25,13 +27,7 @@ public class AdminService
         var newTenantsThisMonth = await _context.Tenants
             .CountAsync(t => t.CreatedAt >= DateTime.UtcNow.AddMonths(-1));
 
-        return new
-        {
-            totalTenants,
-            activeTenants,
-            totalUsers,
-            newTenantsThisMonth
-        };
+        return new { totalTenants, activeTenants, totalUsers, newTenantsThisMonth };
     }
 
     public async Task<PaginatedResponseDto<TenantResponseDto>> GetTenants(int page, int perPage, string? search)
@@ -85,12 +81,7 @@ public class AdminService
                 UserCount = _context.Users.Count(u => u.TenantId == t.Id),
                 Companies = _context.Companies
                     .Where(c => c.TenantId == t.Id)
-                    .Select(c => new TenantDetailsCompanyDto
-                    {
-                        Id = c.Id,
-                        Name = c.Name,
-                        Active = c.Active
-                    })
+                    .Select(c => new TenantDetailsCompanyDto { Id = c.Id, Name = c.Name, Active = c.Active })
                     .ToList(),
                 Modules = _context.TenantModules
                     .Where(tm => tm.TenantId == t.Id)
@@ -197,19 +188,14 @@ public class AdminService
 
         if (tenantId.HasValue)
             query = query.Where(a => a.TenantId == tenantId);
-
         if (!string.IsNullOrWhiteSpace(search))
             query = query.Where(a => a.UserName.ToLower().Contains(search.ToLower()));
-
         if (!string.IsNullOrWhiteSpace(action))
             query = query.Where(a => a.Action == action);
-
         if (!string.IsNullOrWhiteSpace(entity))
             query = query.Where(a => a.Entity == entity);
-
         if (from.HasValue)
             query = query.Where(a => a.CreatedAt >= from.Value.ToUniversalTime());
-
         if (to.HasValue)
             query = query.Where(a => a.CreatedAt <= to.Value.ToUniversalTime().AddDays(1));
 
@@ -255,13 +241,10 @@ public class AdminService
 
         if (tenantId.HasValue)
             query = query.Where(t => t.TenantId == tenantId);
-
         if (!string.IsNullOrWhiteSpace(status))
             query = query.Where(t => t.Status == status);
-
         if (!string.IsNullOrWhiteSpace(priority))
             query = query.Where(t => t.Priority == priority);
-
         if (!string.IsNullOrWhiteSpace(search))
             query = query.Where(t => t.Title.ToLower().Contains(search.ToLower()) ||
                                      t.UserName.ToLower().Contains(search.ToLower()));
@@ -366,7 +349,6 @@ public class AdminService
 
         await _context.SaveChangesAsync();
 
-        // E-mail ao tenant quando admin responde
         _ = Task.Run(async () =>
         {
             try
@@ -407,7 +389,6 @@ public class AdminService
         ticket.UpdatedAt = DateTime.UtcNow;
         await _context.SaveChangesAsync();
 
-        // E-mail ao tenant quando status muda
         _ = Task.Run(async () =>
         {
             try
@@ -422,5 +403,15 @@ public class AdminService
         });
 
         return (true, null);
+    }
+
+    public async Task<Dictionary<string, string>> GetSettings()
+    {
+        return await _settingsService.GetAll();
+    }
+
+    public async Task UpdateSettings(Dictionary<string, string> values)
+    {
+        await _settingsService.SetMany(values);
     }
 }

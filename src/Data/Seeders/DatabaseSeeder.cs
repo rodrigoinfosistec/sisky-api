@@ -7,5 +7,6 @@ public static class DatabaseSeeder
         await PermissionSeeder.SeedAsync(context);
         await UserSeeder.SeedAsync(context, env, configuration);
         await TenantSeeder.SeedAsync(context, env, configuration);
+        await SettingsSeeder.SeedAsync(context, configuration);
     }
 }

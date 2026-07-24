@@ -1,9 +1,9 @@
+using System.Security.Claims;
 using Microsoft.AspNetCore.Mvc;
 using FluentValidation;
 using SiskyApi.Authorization;
 using SiskyApi.DTOs;
 using SiskyApi.Services;
-using System.Security.Claims;
 
 namespace SiskyApi.Controllers;
 
@@ -92,14 +92,14 @@ public class AdminController : ControllerBase
 
     [HttpGet("audit")]
     public async Task<IActionResult> GetAuditLogs(
-    [FromQuery] int page = 1,
-    [FromQuery] int perPage = 20,
-    [FromQuery] int? tenantId = null,
-    [FromQuery] string? search = null,
-    [FromQuery] string? action = null,
-    [FromQuery] string? entity = null,
-    [FromQuery] DateTime? from = null,
-    [FromQuery] DateTime? to = null)
+        [FromQuery] int page = 1,
+        [FromQuery] int perPage = 20,
+        [FromQuery] int? tenantId = null,
+        [FromQuery] string? search = null,
+        [FromQuery] string? action = null,
+        [FromQuery] string? entity = null,
+        [FromQuery] DateTime? from = null,
+        [FromQuery] DateTime? to = null)
     {
         var result = await _adminService.GetAuditLogs(page, perPage, tenantId, search, action, entity, from, to);
         return Ok(result);
@@ -107,12 +107,12 @@ public class AdminController : ControllerBase
 
     [HttpGet("tickets")]
     public async Task<IActionResult> GetTickets(
-    [FromQuery] int page = 1,
-    [FromQuery] int perPage = 15,
-    [FromQuery] int? tenantId = null,
-    [FromQuery] string? status = null,
-    [FromQuery] string? priority = null,
-    [FromQuery] string? search = null)
+        [FromQuery] int page = 1,
+        [FromQuery] int perPage = 15,
+        [FromQuery] int? tenantId = null,
+        [FromQuery] string? status = null,
+        [FromQuery] string? priority = null,
+        [FromQuery] string? search = null)
     {
         var result = await _adminService.GetTickets(page, perPage, tenantId, status, priority, search);
         return Ok(result);
@@ -140,6 +140,20 @@ public class AdminController : ControllerBase
     {
         var (success, error) = await _adminService.UpdateTicketStatus(id, status);
         if (!success) return BadRequest(error);
+        return Ok();
+    }
+
+    [HttpGet("settings")]
+    public async Task<IActionResult> GetSettings()
+    {
+        var settings = await _adminService.GetSettings();
+        return Ok(settings);
+    }
+
+    [HttpPut("settings")]
+    public async Task<IActionResult> UpdateSettings([FromBody] Dictionary<string, string> values)
+    {
+        await _adminService.UpdateSettings(values);
         return Ok();
     }
 }
