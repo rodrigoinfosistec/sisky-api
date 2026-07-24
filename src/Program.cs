@@ -1,22 +1,23 @@
 using SiskyApi.Data.Seeders;
 using System.Text;
+using System.Text.Json;
 using FluentValidation;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.IdentityModel.Tokens;
 using StackExchange.Redis;
 using SiskyApi.Authorization;
 using SiskyApi.Data;
+using SiskyApi.HealthChecks;
 using SiskyApi.Services;
 using Scalar.AspNetCore;
 using Resend;
 using Amazon.S3;
 using Hangfire;
 using Hangfire.PostgreSql;
-using Microsoft.AspNetCore.Diagnostics.HealthChecks;
-using Microsoft.Extensions.Diagnostics.HealthChecks;
-using System.Text.Json;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -43,7 +44,6 @@ builder.Services.AddSingleton<IConnectionMultiplexer>(sp =>
 
     if (redisConnection.StartsWith("redis://") || redisConnection.StartsWith("rediss://"))
     {
-        options = ConfigurationOptions.Parse(new Uri(redisConnection).ToString());
         var uri = new Uri(redisConnection);
         options = new ConfigurationOptions
         {
@@ -95,8 +95,7 @@ builder.Services.AddHangfireServer();
 
 builder.Services.AddHealthChecks()
     .AddNpgSql(builder.Configuration.GetConnectionString("DefaultConnection")!)
-    .AddRedis(builder.Configuration.GetConnectionString("Redis")!,
-        failureStatus: HealthStatus.Degraded);
+    .AddCheck<RedisHealthCheck>("redis");
 
 builder.Services.AddValidatorsFromAssembly(typeof(Program).Assembly);
 
