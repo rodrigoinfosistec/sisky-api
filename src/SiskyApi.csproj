@@ -10,6 +10,8 @@
     </Content>
   </ItemGroup>
   <ItemGroup>
+    <PackageReference Include="AspNetCore.HealthChecks.NpgSql" Version="9.0.0" />
+    <PackageReference Include="AspNetCore.HealthChecks.Redis" Version="9.0.0" />
     <PackageReference Include="AWSSDK.S3" Version="4.0.25.3" />
     <PackageReference Include="BCrypt.Net-Next" Version="4.2.0" />
     <PackageReference Include="Bogus" Version="35.6.5" />

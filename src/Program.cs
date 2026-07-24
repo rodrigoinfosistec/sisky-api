@@ -90,6 +90,10 @@ builder.Services.AddHangfire(config => config
 
 builder.Services.AddHangfireServer();
 
+builder.Services.AddHealthChecks()
+    .AddNpgSql(builder.Configuration.GetConnectionString("DefaultConnection")!)
+    .AddRedis(builder.Configuration.GetConnectionString("Redis")!);
+
 builder.Services.AddValidatorsFromAssembly(typeof(Program).Assembly);
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
@@ -153,6 +157,7 @@ app.UseHangfireDashboard("/hangfire", new DashboardOptions
 });
 
 app.MapControllers();
+app.MapHealthChecks("/health");
 
 using (var scope = app.Services.CreateScope())
 {
