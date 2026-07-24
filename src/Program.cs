@@ -14,6 +14,9 @@ using Resend;
 using Amazon.S3;
 using Hangfire;
 using Hangfire.PostgreSql;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
+using System.Text.Json;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -92,7 +95,8 @@ builder.Services.AddHangfireServer();
 
 builder.Services.AddHealthChecks()
     .AddNpgSql(builder.Configuration.GetConnectionString("DefaultConnection")!)
-    .AddRedis(builder.Configuration.GetConnectionString("Redis")!);
+    .AddRedis(builder.Configuration.GetConnectionString("Redis")!,
+        failureStatus: HealthStatus.Degraded);
 
 builder.Services.AddValidatorsFromAssembly(typeof(Program).Assembly);
 
@@ -157,7 +161,25 @@ app.UseHangfireDashboard("/hangfire", new DashboardOptions
 });
 
 app.MapControllers();
-app.MapHealthChecks("/health");
+
+app.MapHealthChecks("/health", new HealthCheckOptions
+{
+    ResponseWriter = async (context, report) =>
+    {
+        context.Response.ContentType = "application/json";
+        var result = JsonSerializer.Serialize(new
+        {
+            status = report.Status.ToString(),
+            checks = report.Entries.Select(e => new
+            {
+                name = e.Key,
+                status = e.Value.Status.ToString(),
+                error = e.Value.Exception?.Message
+            })
+        });
+        await context.Response.WriteAsync(result);
+    }
+});
 
 using (var scope = app.Services.CreateScope())
 {
