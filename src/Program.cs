@@ -1,4 +1,3 @@
-using SiskyApi.Data.Seeders;
 using System.Text;
 using System.Text.Json;
 using FluentValidation;
@@ -8,15 +7,23 @@ using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using StackExchange.Redis;
-using SiskyApi.Authorization;
-using SiskyApi.Data;
-using SiskyApi.HealthChecks;
-using SiskyApi.Services;
-using Scalar.AspNetCore;
 using Resend;
 using Amazon.S3;
 using Hangfire;
 using Hangfire.PostgreSql;
+using SiskyApi.Shared.Data;
+using SiskyApi.Shared.Data.Seeders;
+using SiskyApi.Shared.Authorization;
+using SiskyApi.Shared.HealthChecks;
+using SiskyApi.Shared.Middlewares;
+using SiskyApi.Shared;
+using SiskyApi.Modules.Auth;
+using SiskyApi.Modules.Users;
+using SiskyApi.Modules.Roles;
+using SiskyApi.Modules.Audit;
+using SiskyApi.Modules.Tickets;
+using SiskyApi.Modules.Admin;
+using Scalar.AspNetCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -154,9 +161,9 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
-app.UseMiddleware<SiskyApi.Middlewares.DynamicCorsMiddleware>();
-app.UseMiddleware<SiskyApi.Middlewares.TokenBlacklistMiddleware>();
-app.UseMiddleware<SiskyApi.Middlewares.TenantMiddleware>();
+app.UseMiddleware<DynamicCorsMiddleware>();
+app.UseMiddleware<TokenBlacklistMiddleware>();
+app.UseMiddleware<TenantMiddleware>();
 app.UseAuthentication();
 app.UseAuthorization();
 
