@@ -12,19 +12,21 @@ public static class PermissionsConfig
 {
     public static readonly ModuleConfig[] Modules = new[]
     {
+        // Core — always active
         new ModuleConfig("users", "Usuários", "Gestão de usuários e permissões",
             new[] { "view", "create", "edit", "delete" }, IsCore: true),
 
         new ModuleConfig("audit", "Auditoria", "Logs de auditoria",
             new[] { "view" }, IsCore: true),
 
-        new ModuleConfig("financeiro", "Financeiro", "Gestão financeira",
+        // Optional
+        new ModuleConfig("inventory", "Estoque", "Gestão de produtos e estoque",
             new[] { "view", "create", "edit", "delete" }),
 
-        new ModuleConfig("rh", "RH", "Recursos humanos",
+        new ModuleConfig("fiscal", "Fiscal", "Gestão de notas fiscais",
             new[] { "view", "create", "edit", "delete" }),
 
-        new ModuleConfig("crm", "CRM", "Gestão de clientes",
+        new ModuleConfig("timeclock", "Ponto", "Gestão de ponto e jornada de trabalho",
             new[] { "view", "create", "edit", "delete" }),
     };
 
