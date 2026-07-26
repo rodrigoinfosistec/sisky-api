@@ -515,7 +515,15 @@ public class AdminService
 
         var hasUsers = await _context.UserCompanies.AnyAsync(uc => uc.CompanyId == companyId);
         if (hasUsers)
-            return (false, "Esta empresa possui usuários associados. Remova-os antes de excluir.");
+            return (false, "Esta empresa possui usuários associados. Desative-a em vez de excluir.");
+
+        var hasAuditLogs = await _context.AuditLogs.AnyAsync(a => a.CompanyId == companyId);
+        if (hasAuditLogs)
+            return (false, "Esta empresa possui logs de auditoria. Desative-a em vez de excluir.");
+
+        var hasTickets = await _context.Tickets.AnyAsync(t => t.CompanyId == companyId);
+        if (hasTickets)
+            return (false, "Esta empresa possui tickets. Desative-a em vez de excluir.");
 
         _context.Companies.Remove(company);
         await _context.SaveChangesAsync();
