@@ -33,7 +33,6 @@ public class UserController : ControllerBase
         _storageService = storageService;
     }
 
-    [RequirePermission("users.view")]
     [HttpGet("me")]
     public async Task<IActionResult> Me()
     {
@@ -46,6 +45,10 @@ public class UserController : ControllerBase
         var roles = User.FindAll(ClaimTypes.Role).Select(c => c.Value).ToList();
         var permissions = User.FindAll("permission").Select(c => c.Value).ToList();
 
+        var activeModules = new List<string>();
+        if (tenantId != null)
+            activeModules = await _userService.GetActiveModules(int.Parse(tenantId));
+
         return Ok(new
         {
             user.Id,
@@ -56,7 +59,8 @@ public class UserController : ControllerBase
             TenantId = tenantId != null ? int.Parse(tenantId) : (int?)null,
             CompanyId = companyId != null ? int.Parse(companyId) : (int?)null,
             Roles = roles,
-            Permissions = permissions
+            Permissions = permissions,
+            ActiveModules = activeModules
         });
     }
 

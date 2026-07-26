@@ -405,4 +405,13 @@ public class UserService
 
         return (true, null, new { user.Id, user.Active });
     }
+
+    public async Task<List<string>> GetActiveModules(int tenantId)
+    {
+        return await _context.TenantModules
+            .Include(tm => tm.Module)
+            .Where(tm => tm.TenantId == tenantId && tm.Active)
+            .Select(tm => tm.Module.Slug)
+            .ToListAsync();
+    }
 }
