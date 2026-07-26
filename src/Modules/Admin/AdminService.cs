@@ -93,6 +93,7 @@ public class AdminService
                         Id = tm.Module.Id,
                         Name = tm.Module.Name,
                         Slug = tm.Module.Slug,
+                        IsCore = tm.Module.IsCore,
                         Active = tm.Active
                     })
                     .ToList()
@@ -404,5 +405,24 @@ public class AdminService
     public async Task UpdateSettings(Dictionary<string, string> values)
     {
         await _settingsService.SetMany(values);
+    }
+
+    public async Task<(bool Success, string? Error, bool? Active)> ToggleTenantModule(int tenantId, int moduleId)
+    {
+        var module = await _context.Modules.FindAsync(moduleId);
+        if (module is null) return (false, "Módulo não encontrado.", null);
+
+        if (module.IsCore)
+            return (false, "Módulos core não podem ser desativados.", null);
+
+        var tenantModule = await _context.TenantModules
+            .FirstOrDefaultAsync(tm => tm.TenantId == tenantId && tm.ModuleId == moduleId);
+
+        if (tenantModule is null) return (false, "Módulo não associado ao tenant.", null);
+
+        tenantModule.Active = !tenantModule.Active;
+        await _context.SaveChangesAsync();
+
+        return (true, null, tenantModule.Active);
     }
 }

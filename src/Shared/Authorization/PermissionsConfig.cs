@@ -4,7 +4,8 @@ public record ModuleConfig(
     string Slug,
     string Name,
     string Description,
-    string[] Actions
+    string[] Actions,
+    bool IsCore = false
 );
 
 public static class PermissionsConfig
@@ -12,7 +13,10 @@ public static class PermissionsConfig
     public static readonly ModuleConfig[] Modules = new[]
     {
         new ModuleConfig("users", "Usuários", "Gestão de usuários e permissões",
-            new[] { "view", "create", "edit", "delete" }),
+            new[] { "view", "create", "edit", "delete" }, IsCore: true),
+
+        new ModuleConfig("audit", "Auditoria", "Logs de auditoria",
+            new[] { "view" }, IsCore: true),
 
         new ModuleConfig("financeiro", "Financeiro", "Gestão financeira",
             new[] { "view", "create", "edit", "delete" }),
@@ -22,9 +26,6 @@ public static class PermissionsConfig
 
         new ModuleConfig("crm", "CRM", "Gestão de clientes",
             new[] { "view", "create", "edit", "delete" }),
-
-        new ModuleConfig("audit", "Auditoria", "Logs de auditoria",
-            new[] { "view" }),
     };
 
     public static IEnumerable<string> All =>

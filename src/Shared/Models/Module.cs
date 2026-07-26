@@ -6,6 +6,7 @@ public class Module
     public string Name { get; set; } = string.Empty;
     public string Slug { get; set; } = string.Empty;
     public string Description { get; set; } = string.Empty;
+    public bool IsCore { get; set; } = false;
     public bool Active { get; set; } = true;
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 

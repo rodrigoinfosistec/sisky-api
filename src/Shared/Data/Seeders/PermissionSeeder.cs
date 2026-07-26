@@ -10,7 +10,6 @@ public static class PermissionSeeder
     {
         foreach (var moduleConfig in PermissionsConfig.Modules)
         {
-            // Cria o módulo se não existir
             var module = await context.Modules
                 .FirstOrDefaultAsync(m => m.Slug == moduleConfig.Slug);
 
@@ -21,14 +20,19 @@ public static class PermissionSeeder
                     Name = moduleConfig.Name,
                     Slug = moduleConfig.Slug,
                     Description = moduleConfig.Description,
+                    IsCore = moduleConfig.IsCore,
                     Active = true,
                     CreatedAt = DateTime.UtcNow
                 };
                 context.Modules.Add(module);
                 await context.SaveChangesAsync();
             }
+            else if (module.IsCore != moduleConfig.IsCore)
+            {
+                module.IsCore = moduleConfig.IsCore;
+                await context.SaveChangesAsync();
+            }
 
-            // Cria as permissões do módulo que não existem
             foreach (var action in moduleConfig.Actions)
             {
                 var slug = $"{moduleConfig.Slug}.{action}";

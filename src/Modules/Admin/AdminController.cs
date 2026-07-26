@@ -159,4 +159,12 @@ public class AdminController : ControllerBase
         await _adminService.UpdateSettings(values);
         return Ok();
     }
+
+    [HttpPatch("tenants/{tenantId}/modules/{moduleId}/toggle")]
+    public async Task<IActionResult> ToggleTenantModule(int tenantId, int moduleId)
+    {
+        var (success, error, active) = await _adminService.ToggleTenantModule(tenantId, moduleId);
+        if (!success) return BadRequest(error);
+        return Ok(new { tenantId, moduleId, active });
+    }
 }
