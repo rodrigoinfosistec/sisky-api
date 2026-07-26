@@ -2,10 +2,7 @@ using System.Security.Claims;
 using Microsoft.AspNetCore.Mvc;
 using FluentValidation;
 using SiskyApi.Shared.Authorization;
-using SiskyApi.Shared.Common;
-using SiskyApi.Shared;
 using SiskyApi.Modules.Admin.DTOs;
-using SiskyApi.Modules.Audit.DTOs;
 using SiskyApi.Modules.Tickets.DTOs;
 
 namespace SiskyApi.Modules.Admin;
@@ -18,15 +15,21 @@ public class AdminController : ControllerBase
     private readonly AdminService _adminService;
     private readonly IValidator<TenantCreateDto> _createValidator;
     private readonly IValidator<TenantUpdateDto> _updateValidator;
+    private readonly IValidator<CompanyCreateDto> _companyCreateValidator;
+    private readonly IValidator<CompanyUpdateDto> _companyUpdateValidator;
 
     public AdminController(
         AdminService adminService,
         IValidator<TenantCreateDto> createValidator,
-        IValidator<TenantUpdateDto> updateValidator)
+        IValidator<TenantUpdateDto> updateValidator,
+        IValidator<CompanyCreateDto> companyCreateValidator,
+        IValidator<CompanyUpdateDto> companyUpdateValidator)
     {
         _adminService = adminService;
         _createValidator = createValidator;
         _updateValidator = updateValidator;
+        _companyCreateValidator = companyCreateValidator;
+        _companyUpdateValidator = companyUpdateValidator;
     }
 
     [HttpGet("dashboard")]
@@ -166,5 +169,51 @@ public class AdminController : ControllerBase
         var (success, error, active) = await _adminService.ToggleTenantModule(tenantId, moduleId);
         if (!success) return BadRequest(error);
         return Ok(new { tenantId, moduleId, active });
+    }
+
+    [HttpGet("tenants/{tenantId}/companies")]
+    public async Task<IActionResult> GetCompanies(int tenantId)
+    {
+        var companies = await _adminService.GetCompanies(tenantId);
+        return Ok(companies);
+    }
+
+    [HttpPost("tenants/{tenantId}/companies")]
+    public async Task<IActionResult> CreateCompany(int tenantId, [FromBody] CompanyCreateDto dto)
+    {
+        var validation = await _companyCreateValidator.ValidateAsync(dto);
+        if (!validation.IsValid)
+            return BadRequest(validation.Errors.Select(e => e.ErrorMessage));
+
+        var company = await _adminService.CreateCompany(tenantId, dto);
+        return Created($"/api/admin/tenants/{tenantId}/companies/{company.Id}", company);
+    }
+
+    [HttpPut("tenants/{tenantId}/companies/{companyId}")]
+    public async Task<IActionResult> UpdateCompany(int tenantId, int companyId, [FromBody] CompanyUpdateDto dto)
+    {
+        var validation = await _companyUpdateValidator.ValidateAsync(dto);
+        if (!validation.IsValid)
+            return BadRequest(validation.Errors.Select(e => e.ErrorMessage));
+
+        var company = await _adminService.UpdateCompany(tenantId, companyId, dto);
+        if (company is null) return NotFound();
+        return Ok(company);
+    }
+
+    [HttpDelete("tenants/{tenantId}/companies/{companyId}")]
+    public async Task<IActionResult> DeleteCompany(int tenantId, int companyId)
+    {
+        var (success, error) = await _adminService.DeleteCompany(tenantId, companyId);
+        if (!success) return BadRequest(error);
+        return NoContent();
+    }
+
+    [HttpPatch("tenants/{tenantId}/companies/{companyId}/toggle-active")]
+    public async Task<IActionResult> ToggleCompanyActive(int tenantId, int companyId)
+    {
+        var (success, active) = await _adminService.ToggleCompanyActive(tenantId, companyId);
+        if (!success) return NotFound();
+        return Ok(new { tenantId, companyId, active });
     }
 }

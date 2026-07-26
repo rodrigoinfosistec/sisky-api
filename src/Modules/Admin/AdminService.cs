@@ -425,4 +425,113 @@ public class AdminService
 
         return (true, null, tenantModule.Active);
     }
+
+    public async Task<List<CompanyResponseDto>> GetCompanies(int tenantId)
+    {
+        return await _context.Companies
+            .Where(c => c.TenantId == tenantId)
+            .OrderBy(c => c.Name)
+            .Select(c => new CompanyResponseDto
+            {
+                Id = c.Id,
+                TenantId = c.TenantId,
+                Name = c.Name,
+                PrimaryColor = c.PrimaryColor,
+                Active = c.Active,
+                CreatedAt = c.CreatedAt
+            })
+            .ToListAsync();
+    }
+
+    public async Task<CompanyResponseDto> CreateCompany(int tenantId, CompanyCreateDto dto)
+    {
+        var company = new Company
+        {
+            TenantId = tenantId,
+            Name = dto.Name,
+            PrimaryColor = dto.PrimaryColor ?? "#111111",
+            Active = true,
+            CreatedAt = DateTime.UtcNow
+        };
+
+        _context.Companies.Add(company);
+        await _context.SaveChangesAsync();
+
+        var modules = await _context.TenantModules
+            .Where(tm => tm.TenantId == tenantId && tm.Active)
+            .Select(tm => tm.ModuleId)
+            .ToListAsync();
+
+        foreach (var moduleId in modules)
+        {
+            _context.CompanyModules.Add(new CompanyModule
+            {
+                CompanyId = company.Id,
+                ModuleId = moduleId,
+                Active = true
+            });
+        }
+        await _context.SaveChangesAsync();
+
+        return new CompanyResponseDto
+        {
+            Id = company.Id,
+            TenantId = company.TenantId,
+            Name = company.Name,
+            PrimaryColor = company.PrimaryColor,
+            Active = company.Active,
+            CreatedAt = company.CreatedAt
+        };
+    }
+
+    public async Task<CompanyResponseDto?> UpdateCompany(int tenantId, int companyId, CompanyUpdateDto dto)
+    {
+        var company = await _context.Companies
+            .FirstOrDefaultAsync(c => c.Id == companyId && c.TenantId == tenantId);
+        if (company is null) return null;
+
+        company.Name = dto.Name;
+        if (!string.IsNullOrEmpty(dto.PrimaryColor))
+            company.PrimaryColor = dto.PrimaryColor;
+
+        await _context.SaveChangesAsync();
+
+        return new CompanyResponseDto
+        {
+            Id = company.Id,
+            TenantId = company.TenantId,
+            Name = company.Name,
+            PrimaryColor = company.PrimaryColor,
+            Active = company.Active,
+            CreatedAt = company.CreatedAt
+        };
+    }
+
+    public async Task<(bool Success, string? Error)> DeleteCompany(int tenantId, int companyId)
+    {
+        var company = await _context.Companies
+            .FirstOrDefaultAsync(c => c.Id == companyId && c.TenantId == tenantId);
+        if (company is null) return (false, "Empresa não encontrada.");
+
+        var hasUsers = await _context.UserCompanies.AnyAsync(uc => uc.CompanyId == companyId);
+        if (hasUsers)
+            return (false, "Esta empresa possui usuários associados. Remova-os antes de excluir.");
+
+        _context.Companies.Remove(company);
+        await _context.SaveChangesAsync();
+
+        return (true, null);
+    }
+
+    public async Task<(bool Success, bool? Active)> ToggleCompanyActive(int tenantId, int companyId)
+    {
+        var company = await _context.Companies
+            .FirstOrDefaultAsync(c => c.Id == companyId && c.TenantId == tenantId);
+        if (company is null) return (false, null);
+
+        company.Active = !company.Active;
+        await _context.SaveChangesAsync();
+
+        return (true, company.Active);
+    }
 }
