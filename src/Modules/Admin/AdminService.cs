@@ -457,6 +457,7 @@ public class AdminService
         _context.Companies.Add(company);
         await _context.SaveChangesAsync();
 
+        // Associa os módulos ativos do tenant à nova empresa
         var modules = await _context.TenantModules
             .Where(tm => tm.TenantId == tenantId && tm.Active)
             .Select(tm => tm.ModuleId)
@@ -473,6 +474,51 @@ public class AdminService
         }
         await _context.SaveChangesAsync();
 
+        // Associa automaticamente todos os Super Admins do tenant à nova empresa
+        var superAdminRole = await _context.Roles
+            .FirstOrDefaultAsync(r => r.TenantId == tenantId && r.Name == "Super Admin");
+
+        if (superAdminRole != null)
+        {
+            var superAdminUserIds = await _context.UserRoles
+                .Where(ur => ur.RoleId == superAdminRole.Id)
+                .Select(ur => ur.UserId)
+                .Distinct()
+                .ToListAsync();
+
+            foreach (var userId in superAdminUserIds)
+            {
+                var alreadyInCompany = await _context.UserCompanies
+                    .AnyAsync(uc => uc.UserId == userId && uc.CompanyId == company.Id);
+
+                if (!alreadyInCompany)
+                {
+                    _context.UserCompanies.Add(new UserCompany
+                    {
+                        UserId = userId,
+                        CompanyId = company.Id,
+                        IsDefault = false
+                    });
+                }
+
+                var alreadyHasRole = await _context.UserRoles
+                    .AnyAsync(ur => ur.UserId == userId &&
+                                    ur.CompanyId == company.Id &&
+                                    ur.RoleId == superAdminRole.Id);
+
+                if (!alreadyHasRole)
+                {
+                    _context.UserRoles.Add(new UserRole
+                    {
+                        UserId = userId,
+                        CompanyId = company.Id,
+                        RoleId = superAdminRole.Id
+                    });
+                }
+            }
+            await _context.SaveChangesAsync();
+        }
+
         return new CompanyResponseDto
         {
             Id = company.Id,
@@ -483,7 +529,6 @@ public class AdminService
             CreatedAt = company.CreatedAt
         };
     }
-
     public async Task<CompanyResponseDto?> UpdateCompany(int tenantId, int companyId, CompanyUpdateDto dto)
     {
         var company = await _context.Companies
