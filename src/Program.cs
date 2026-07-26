@@ -164,6 +164,7 @@ app.UseHttpsRedirection();
 app.UseMiddleware<DynamicCorsMiddleware>();
 app.UseMiddleware<TokenBlacklistMiddleware>();
 app.UseMiddleware<TenantMiddleware>();
+app.UseMiddleware<ModuleMiddleware>();
 app.UseAuthentication();
 app.UseAuthorization();
 
