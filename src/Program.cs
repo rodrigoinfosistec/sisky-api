@@ -50,6 +50,8 @@ builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection"))
            .UseSnakeCaseNamingConvention());
 
+builder.Services.AddScoped<IAppDbContext>(sp => sp.GetRequiredService<AppDbContext>());
+
 builder.Services.AddSingleton<IConnectionMultiplexer>(sp =>
 {
     var redisConnection = builder.Configuration.GetConnectionString("Redis")!;

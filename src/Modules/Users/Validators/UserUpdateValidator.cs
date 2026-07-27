@@ -7,7 +7,7 @@ namespace SiskyApi.Modules.Users.Validators;
 
 public class UserUpdateValidator : AbstractValidator<UserUpdateDto>
 {
-    public UserUpdateValidator(AppDbContext context)
+    public UserUpdateValidator(IAppDbContext context)
     {
         RuleFor(x => x.Name)
             .NotEmpty().WithMessage("Nome é obrigatório.")

@@ -7,7 +7,7 @@ namespace SiskyApi.Modules.Admin.Validators;
 
 public class TenantCreateValidator : AbstractValidator<TenantCreateDto>
 {
-    public TenantCreateValidator(AppDbContext context)
+    public TenantCreateValidator(IAppDbContext context)
     {
         RuleFor(x => x.Name)
             .NotEmpty().WithMessage("Nome é obrigatório.")
