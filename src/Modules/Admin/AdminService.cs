@@ -15,11 +15,13 @@ public class AdminService
 {
     private readonly AppDbContext _context;
     private readonly SettingsService _settingsService;
+    private readonly StorageService _storageService;
 
-    public AdminService(AppDbContext context, SettingsService settingsService)
+    public AdminService(AppDbContext context, SettingsService settingsService, StorageService storageService)
     {
         _context = context;
         _settingsService = settingsService;
+        _storageService = storageService;
     }
 
     public async Task<object> GetDashboard()
@@ -586,5 +588,23 @@ public class AdminService
         await _context.SaveChangesAsync();
 
         return (true, company.Active);
+    }
+
+    public async Task<string?> UploadLogo(IFormFile file)
+    {
+        using var stream = file.OpenReadStream();
+        var url = await _storageService.UploadAsync(stream, file.FileName, file.ContentType, StorageFolders.Logos);
+        if (url is null) return null;
+        await _settingsService.Set("logo_url", url);
+        return url;
+    }
+
+    public async Task<string?> UploadFavicon(IFormFile file)
+    {
+        using var stream = file.OpenReadStream();
+        var url = await _storageService.UploadAsync(stream, file.FileName, file.ContentType, StorageFolders.Favicons);
+        if (url is null) return null;
+        await _settingsService.Set("favicon_url", url);
+        return url;
     }
 }

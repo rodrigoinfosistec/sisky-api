@@ -11,6 +11,8 @@ public static class SettingsSeeder
         {
             { "support_email", configuration["Admin:SupportEmail"] ?? "suporte@sisky.com.br" },
             { "system_name", "Sisky" },
+            { "logo_url", "" },
+            { "favicon_url", "" },
         };
 
         foreach (var (key, value) in defaults)

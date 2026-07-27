@@ -216,4 +216,20 @@ public class AdminController : ControllerBase
         if (!success) return NotFound();
         return Ok(new { tenantId, companyId, active });
     }
+
+    [HttpPost("settings/logo")]
+    public async Task<IActionResult> UploadLogo(IFormFile file)
+    {
+        var url = await _adminService.UploadLogo(file);
+        if (url is null) return BadRequest("Erro ao fazer upload do logo.");
+        return Ok(new { url });
+    }
+
+    [HttpPost("settings/favicon")]
+    public async Task<IActionResult> UploadFavicon(IFormFile file)
+    {
+        var url = await _adminService.UploadFavicon(file);
+        if (url is null) return BadRequest("Erro ao fazer upload do favicon.");
+        return Ok(new { url });
+    }
 }
