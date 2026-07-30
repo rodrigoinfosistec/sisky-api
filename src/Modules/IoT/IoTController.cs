@@ -30,7 +30,12 @@ public class IoTController : ControllerBase
     [FromQuery] string? type = null,
     [FromQuery] int hours = 24)
     {
-        var resolvedTenantId = tenantId ?? _tenantContext.TenantId;
+        // Super Admin passa tenantId como query param
+        // Usuário comum usa o TenantId do contexto (middleware ou JWT)
+        var resolvedTenantId = tenantId
+            ?? _tenantContext.TenantId
+            ?? HttpContext.Items["TenantId"] as int?;
+
         if (resolvedTenantId is null)
             return BadRequest("Tenant não identificado.");
 
