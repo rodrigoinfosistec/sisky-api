@@ -13,9 +13,13 @@ public class TenantContext
     {
         get
         {
+            // Primeiro tenta do middleware (X-Tenant-Subdomain)
             if (_httpContextAccessor.HttpContext?.Items["TenantId"] is int tenantId)
                 return tenantId;
-            return null;
+
+            // Fallback: pega do JWT
+            var claim = _httpContextAccessor.HttpContext?.User?.FindFirst("tenant_id")?.Value;
+            return int.TryParse(claim, out var id) ? id : null;
         }
     }
 
