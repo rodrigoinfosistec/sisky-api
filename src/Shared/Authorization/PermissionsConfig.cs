@@ -28,6 +28,9 @@ public static class PermissionsConfig
 
         new ModuleConfig("timeclock", "Ponto", "Gestão de ponto e jornada de trabalho",
             new[] { "view", "create", "edit", "delete" }),
+
+        new ModuleConfig("iot", "IoT", "Monitoramento de sensores e dispositivos conectados",
+            new[] { "view", "create", "edit", "delete" }),
     };
 
     public static IEnumerable<string> All =>

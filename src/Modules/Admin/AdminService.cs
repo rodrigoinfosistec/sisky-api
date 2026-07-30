@@ -8,6 +8,8 @@ using SiskyApi.Shared;
 using SiskyApi.Modules.Admin.DTOs;
 using SiskyApi.Modules.Audit.DTOs;
 using SiskyApi.Modules.Tickets.DTOs;
+using SiskyApi.Modules.IoT;
+using SiskyApi.Modules.IoT.DTOs;
 
 namespace SiskyApi.Modules.Admin;
 
@@ -16,12 +18,14 @@ public class AdminService
     private readonly AppDbContext _context;
     private readonly SettingsService _settingsService;
     private readonly StorageService _storageService;
+    private readonly IoTService _iotService;
 
-    public AdminService(AppDbContext context, SettingsService settingsService, StorageService storageService)
+    public AdminService(AppDbContext context, SettingsService settingsService, StorageService storageService, IoTService iotService)
     {
         _context = context;
         _settingsService = settingsService;
         _storageService = storageService;
+        _iotService = iotService;
     }
 
     public async Task<object> GetDashboard()
@@ -606,5 +610,36 @@ public class AdminService
         if (url is null) return null;
         await _settingsService.Set("favicon_url", url);
         return url;
+    }
+
+    // IoT Devices
+    public async Task<List<IoTDeviceResponseDto>> GetIoTDevices(int tenantId)
+    {
+        return await _iotService.GetDevices(tenantId);
+    }
+
+    public async Task<IoTDeviceResponseDto> CreateIoTDevice(int tenantId, IoTDeviceCreateDto dto)
+    {
+        return await _iotService.CreateDevice(tenantId, dto);
+    }
+
+    public async Task<(bool Success, bool? Active)> ToggleIoTDevice(int tenantId, int deviceId)
+    {
+        return await _iotService.ToggleDevice(deviceId, tenantId);
+    }
+
+    public async Task<(bool Success, string? Error)> DeleteIoTDevice(int tenantId, int deviceId)
+    {
+        return await _iotService.DeleteDevice(deviceId, tenantId);
+    }
+
+    public async Task SeedIoTReadings(int tenantId, int deviceId)
+    {
+        await _iotService.SeedMockReadings(deviceId, tenantId);
+    }
+
+    public async Task ClearIoTReadings(int tenantId, int deviceId)
+    {
+        await _iotService.ClearReadings(deviceId, tenantId);
     }
 }

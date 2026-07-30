@@ -17,6 +17,7 @@ public class ModuleMiddleware
         { "/api/financeiro", "financeiro" },
         { "/api/rh", "rh" },
         { "/api/crm", "crm" },
+        { "/api/iot", "iot" },
     };
 
     public ModuleMiddleware(RequestDelegate next, IMemoryCache cache)

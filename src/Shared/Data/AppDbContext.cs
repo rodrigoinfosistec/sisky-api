@@ -24,6 +24,8 @@ public class AppDbContext : DbContext, IAppDbContext
     public DbSet<Ticket> Tickets { get; set; }
     public DbSet<TicketMessage> TicketMessages { get; set; }
     public DbSet<Setting> Settings { get; set; }
+    public DbSet<IoTDevice> IoTDevices { get; set; }
+    public DbSet<IoTReading> IoTReadings { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -93,5 +95,10 @@ public class AppDbContext : DbContext, IAppDbContext
         modelBuilder.Entity<Setting>()
             .HasIndex(s => s.Key)
             .IsUnique();
+
+        // IoTReading — Data como JSONB
+        modelBuilder.Entity<IoTReading>()
+            .Property(r => r.Data)
+            .HasColumnType("jsonb");
     }
 }

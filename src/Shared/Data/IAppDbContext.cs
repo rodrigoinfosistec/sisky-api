@@ -20,6 +20,8 @@ public interface IAppDbContext
     DbSet<Ticket> Tickets { get; }
     DbSet<TicketMessage> TicketMessages { get; }
     DbSet<Setting> Settings { get; }
+    DbSet<IoTDevice> IoTDevices { get; }
+    DbSet<IoTReading> IoTReadings { get; }
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }

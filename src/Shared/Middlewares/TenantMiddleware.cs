@@ -16,26 +16,20 @@ public class TenantMiddleware
 
     public async Task Invoke(HttpContext context, AppDbContext db)
     {
-        var subdomain = context.Request.Headers["X-Tenant-Subdomain"].ToString();
+        var path = context.Request.Path.Value?.ToLower() ?? "";
+        var method = context.Request.Method;
+        var tenantId = context.Items["TenantId"] as int?;
 
-        if (!string.IsNullOrEmpty(subdomain))
+        // POST /api/iot/readings usa API Key — não precisa de tenant no contexto
+        if (path == "/api/iot/readings" && method == "POST")
         {
-            var tenant = await db.Tenants
-                .FirstOrDefaultAsync(t => t.Subdomain == subdomain && t.Active);
+            await _next(context);
+            return;
+        }
 
-            if (tenant is null)
-            {
-                context.Response.StatusCode = 404;
-                await context.Response.WriteAsJsonAsync(new
-                {
-                    error = "Tenant não encontrado ou inativo.",
-                    redirectTo = _frontendUrl
-                });
-                return;
-            }
-
-            context.Items["TenantId"] = tenant.Id;
-            context.Items["TenantName"] = tenant.Name;
+        if (tenantId.HasValue)
+        {
+            // resto do código...
         }
 
         await _next(context);

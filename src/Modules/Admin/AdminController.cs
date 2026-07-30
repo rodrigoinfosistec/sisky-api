@@ -4,6 +4,7 @@ using FluentValidation;
 using SiskyApi.Shared.Authorization;
 using SiskyApi.Modules.Admin.DTOs;
 using SiskyApi.Modules.Tickets.DTOs;
+using SiskyApi.Modules.IoT.DTOs;
 
 namespace SiskyApi.Modules.Admin;
 
@@ -17,19 +18,22 @@ public class AdminController : ControllerBase
     private readonly IValidator<TenantUpdateDto> _updateValidator;
     private readonly IValidator<CompanyCreateDto> _companyCreateValidator;
     private readonly IValidator<CompanyUpdateDto> _companyUpdateValidator;
+    private readonly IValidator<IoTDeviceCreateDto> _deviceCreateValidator;
 
     public AdminController(
-        AdminService adminService,
-        IValidator<TenantCreateDto> createValidator,
-        IValidator<TenantUpdateDto> updateValidator,
-        IValidator<CompanyCreateDto> companyCreateValidator,
-        IValidator<CompanyUpdateDto> companyUpdateValidator)
+    AdminService adminService,
+    IValidator<TenantCreateDto> createValidator,
+    IValidator<TenantUpdateDto> updateValidator,
+    IValidator<CompanyCreateDto> companyCreateValidator,
+    IValidator<CompanyUpdateDto> companyUpdateValidator,
+    IValidator<IoTDeviceCreateDto> deviceCreateValidator)
     {
         _adminService = adminService;
         _createValidator = createValidator;
         _updateValidator = updateValidator;
         _companyCreateValidator = companyCreateValidator;
         _companyUpdateValidator = companyUpdateValidator;
+        _deviceCreateValidator = deviceCreateValidator;
     }
 
     [HttpGet("dashboard")]
@@ -231,5 +235,54 @@ public class AdminController : ControllerBase
         var url = await _adminService.UploadFavicon(file);
         if (url is null) return BadRequest("Erro ao fazer upload do favicon.");
         return Ok(new { url });
+    }
+
+    // IoT Devices
+    [HttpGet("tenants/{tenantId}/devices")]
+    public async Task<IActionResult> GetIoTDevices(int tenantId)
+    {
+        var devices = await _adminService.GetIoTDevices(tenantId);
+        return Ok(devices);
+    }
+
+    [HttpPost("tenants/{tenantId}/devices")]
+    public async Task<IActionResult> CreateIoTDevice(int tenantId, [FromBody] IoTDeviceCreateDto dto)
+    {
+        var validation = await _deviceCreateValidator.ValidateAsync(dto);
+        if (!validation.IsValid)
+            return BadRequest(validation.Errors.Select(e => e.ErrorMessage));
+
+        var device = await _adminService.CreateIoTDevice(tenantId, dto);
+        return Created($"/api/admin/tenants/{tenantId}/devices/{device.Id}", device);
+    }
+
+    [HttpPatch("tenants/{tenantId}/devices/{deviceId}/toggle")]
+    public async Task<IActionResult> ToggleIoTDevice(int tenantId, int deviceId)
+    {
+        var (success, active) = await _adminService.ToggleIoTDevice(tenantId, deviceId);
+        if (!success) return NotFound();
+        return Ok(new { tenantId, deviceId, active });
+    }
+
+    [HttpDelete("tenants/{tenantId}/devices/{deviceId}")]
+    public async Task<IActionResult> DeleteIoTDevice(int tenantId, int deviceId)
+    {
+        var (success, error) = await _adminService.DeleteIoTDevice(tenantId, deviceId);
+        if (!success) return BadRequest(error);
+        return NoContent();
+    }
+
+    [HttpPost("tenants/{tenantId}/devices/{deviceId}/seed")]
+    public async Task<IActionResult> SeedIoTReadings(int tenantId, int deviceId)
+    {
+        await _adminService.SeedIoTReadings(tenantId, deviceId);
+        return Ok(new { message = "Dados mockados gerados com sucesso." });
+    }
+
+    [HttpDelete("tenants/{tenantId}/devices/{deviceId}/readings")]
+    public async Task<IActionResult> ClearIoTReadings(int tenantId, int deviceId)
+    {
+        await _adminService.ClearIoTReadings(tenantId, deviceId);
+        return Ok(new { message = "Leituras removidas com sucesso." });
     }
 }
