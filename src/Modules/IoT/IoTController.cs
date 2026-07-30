@@ -63,4 +63,17 @@ public class IoTController : ControllerBase
 
         return Created("", reading);
     }
+
+    [Authorize]
+    [RequirePermission("iot.view")]
+    [HttpGet("devices")]
+    public async Task<IActionResult> GetDevices()
+    {
+        var tenantId = _tenantContext.TenantId;
+        if (tenantId is null)
+            return BadRequest("Tenant não identificado.");
+
+        var devices = await _iotService.GetDevices(tenantId.Value);
+        return Ok(devices);
+    }
 }
