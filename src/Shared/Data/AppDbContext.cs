@@ -26,6 +26,7 @@ public class AppDbContext : DbContext, IAppDbContext
     public DbSet<Setting> Settings { get; set; }
     public DbSet<IoTDevice> IoTDevices { get; set; }
     public DbSet<IoTReading> IoTReadings { get; set; }
+    public DbSet<Notification> Notifications { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -100,5 +101,17 @@ public class AppDbContext : DbContext, IAppDbContext
         modelBuilder.Entity<IoTReading>()
             .Property(r => r.Data)
             .HasColumnType("jsonb");
+
+        modelBuilder.Entity<Notification>()
+            .HasOne(n => n.User)
+            .WithMany()
+            .HasForeignKey(n => n.UserId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<Notification>()
+            .HasOne(n => n.Tenant)
+            .WithMany()
+            .HasForeignKey(n => n.TenantId)
+            .OnDelete(DeleteBehavior.Cascade);
     }
 }

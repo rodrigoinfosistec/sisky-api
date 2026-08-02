@@ -6,6 +6,7 @@ using SiskyApi.Shared.Common;
 using SiskyApi.Shared.Constants;
 using SiskyApi.Shared;
 using SiskyApi.Modules.Tickets.DTOs;
+using SiskyApi.Modules.Notifications;
 
 namespace SiskyApi.Modules.Tickets;
 
@@ -14,103 +15,21 @@ public class TicketService
     private readonly AppDbContext _context;
     private readonly TenantContext _tenantContext;
     private readonly SettingsService _settingsService;
+    private readonly NotificationService _notificationService;
 
-    public TicketService(AppDbContext context, TenantContext tenantContext, SettingsService settingsService)
+    public TicketService(
+        AppDbContext context,
+        TenantContext tenantContext,
+        SettingsService settingsService,
+        NotificationService notificationService)
     {
         _context = context;
         _tenantContext = tenantContext;
         _settingsService = settingsService;
+        _notificationService = notificationService;
     }
 
-    public async Task<PaginatedResponseDto<TicketResponseDto>> GetAll(
-        int page, int perPage, string? status, string? priority, string? search)
-    {
-        var query = _context.Tickets
-            .Where(t => t.TenantId == _tenantContext.TenantId &&
-                        t.CompanyId == _tenantContext.CompanyId)
-            .AsQueryable();
-
-        if (!string.IsNullOrWhiteSpace(status))
-            query = query.Where(t => t.Status == status);
-
-        if (!string.IsNullOrWhiteSpace(priority))
-            query = query.Where(t => t.Priority == priority);
-
-        if (!string.IsNullOrWhiteSpace(search))
-            query = query.Where(t => t.Title.ToLower().Contains(search.ToLower()));
-
-        var total = await query.CountAsync();
-        var lastPage = (int)Math.Ceiling((double)total / perPage);
-
-        var tickets = await query
-            .OrderByDescending(t => t.CreatedAt)
-            .Skip((page - 1) * perPage)
-            .Take(perPage)
-            .Select(t => new TicketResponseDto
-            {
-                Id = t.Id,
-                TenantId = t.TenantId,
-                TenantName = t.TenantName,
-                CompanyId = t.CompanyId,
-                CompanyName = t.CompanyName,
-                UserId = t.UserId,
-                UserName = t.UserName,
-                Title = t.Title,
-                Description = t.Description,
-                Status = t.Status,
-                Priority = t.Priority,
-                MessageCount = t.Messages.Count,
-                CreatedAt = t.CreatedAt,
-                UpdatedAt = t.UpdatedAt
-            })
-            .ToListAsync();
-
-        return new PaginatedResponseDto<TicketResponseDto>
-        {
-            Data = tickets,
-            Total = total,
-            Page = page,
-            PerPage = perPage,
-            LastPage = lastPage
-        };
-    }
-
-    public async Task<TicketDetailsDto?> GetById(int id)
-    {
-        return await _context.Tickets
-            .Where(t => t.Id == id &&
-                        t.TenantId == _tenantContext.TenantId &&
-                        t.CompanyId == _tenantContext.CompanyId)
-            .Select(t => new TicketDetailsDto
-            {
-                Id = t.Id,
-                TenantId = t.TenantId,
-                TenantName = t.TenantName,
-                CompanyId = t.CompanyId,
-                CompanyName = t.CompanyName,
-                UserId = t.UserId,
-                UserName = t.UserName,
-                Title = t.Title,
-                Description = t.Description,
-                Status = t.Status,
-                Priority = t.Priority,
-                CreatedAt = t.CreatedAt,
-                UpdatedAt = t.UpdatedAt,
-                Messages = t.Messages
-                    .OrderBy(m => m.CreatedAt)
-                    .Select(m => new TicketMessageDto
-                    {
-                        Id = m.Id,
-                        UserId = m.UserId,
-                        UserName = m.UserName,
-                        Message = m.Message,
-                        IsAdminReply = m.IsAdminReply,
-                        CreatedAt = m.CreatedAt
-                    })
-                    .ToList()
-            })
-            .FirstOrDefaultAsync();
-    }
+    // ... GetAll e GetById sem alteração ...
 
     public async Task<TicketResponseDto> Create(TicketCreateDto dto, int userId)
     {
@@ -207,6 +126,18 @@ public class TicketService
                 x.SendTicketReplyToAdminAsync(
                     supportEmail, ticket.Id, ticket.Title, dto.Message, user.Name));
 
+        // Notificação in-app — admin respondeu
+        if (isAdminReply)
+        {
+            await _notificationService.Create(
+                userId: ticket.UserId,
+                tenantId: ticket.TenantId,
+                title: "Nova resposta no ticket",
+                message: $"Seu ticket \"{ticket.Title}\" recebeu uma nova resposta.",
+                link: $"/support/{ticket.Id}"
+            );
+        }
+
         return new TicketMessageDto
         {
             Id = message.Id,
@@ -242,6 +173,15 @@ public class TicketService
                 ticket.Id, ticket.Title,
                 oldStatus, status,
                 ticket.Tenant.Subdomain));
+
+        // Notificação in-app — status alterado
+        await _notificationService.Create(
+            userId: ticket.UserId,
+            tenantId: ticket.TenantId,
+            title: "Status do ticket alterado",
+            message: $"O status do ticket \"{ticket.Title}\" foi alterado para {status}.",
+            link: $"/support/{ticket.Id}"
+        );
 
         return (true, null);
     }

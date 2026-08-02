@@ -22,6 +22,7 @@ public interface IAppDbContext
     DbSet<Setting> Settings { get; }
     DbSet<IoTDevice> IoTDevices { get; }
     DbSet<IoTReading> IoTReadings { get; }
+    DbSet<Notification> Notifications { get; }
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }

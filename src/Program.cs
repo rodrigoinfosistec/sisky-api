@@ -25,6 +25,7 @@ using SiskyApi.Modules.Tickets;
 using SiskyApi.Modules.Admin;
 using Scalar.AspNetCore;
 using SiskyApi.Modules.IoT;
+using SiskyApi.Modules.Notifications;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -46,7 +47,8 @@ builder.Services.AddScoped<RoleService>();
 builder.Services.AddScoped<AdminService>();
 builder.Services.AddScoped<TicketService>();
 builder.Services.AddScoped<SettingsService>();
-builder.Services.AddScoped<IoTService>(); // ← substitui
+builder.Services.AddScoped<IoTService>();
+builder.Services.AddScoped<NotificationService>();
 
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection"))
