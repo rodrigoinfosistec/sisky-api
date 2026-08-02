@@ -10,6 +10,7 @@ using SiskyApi.Modules.Audit.DTOs;
 using SiskyApi.Modules.Tickets.DTOs;
 using SiskyApi.Modules.IoT;
 using SiskyApi.Modules.IoT.DTOs;
+using SiskyApi.Modules.Notifications;
 
 namespace SiskyApi.Modules.Admin;
 
@@ -19,13 +20,20 @@ public class AdminService
     private readonly SettingsService _settingsService;
     private readonly StorageService _storageService;
     private readonly IoTService _iotService;
+    private readonly NotificationService _notificationService;
 
-    public AdminService(AppDbContext context, SettingsService settingsService, StorageService storageService, IoTService iotService)
+    public AdminService(
+        AppDbContext context,
+        SettingsService settingsService,
+        StorageService storageService,
+        IoTService iotService,
+        NotificationService notificationService)
     {
         _context = context;
         _settingsService = settingsService;
         _storageService = storageService;
         _iotService = iotService;
+        _notificationService = notificationService;
     }
 
     public async Task<object> GetDashboard()
@@ -365,6 +373,14 @@ public class AdminService
                 ticket.Id, ticket.Title,
                 dto.Message, ticket.Tenant.Subdomain));
 
+        await _notificationService.Create(
+            userId: ticket.UserId,
+            tenantId: ticket.TenantId,
+            title: "Nova resposta no ticket",
+            message: $"Seu ticket \"{ticket.Title}\" recebeu uma nova resposta.",
+            link: $"/support/{ticket.Id}"
+        );
+
         return new TicketMessageDto
         {
             Id = message.Id,
@@ -399,6 +415,14 @@ public class AdminService
                 ticket.Id, ticket.Title,
                 oldStatus, status,
                 ticket.Tenant.Subdomain));
+
+        await _notificationService.Create(
+            userId: ticket.UserId,
+            tenantId: ticket.TenantId,
+            title: "Status do ticket alterado",
+            message: $"O status do ticket \"{ticket.Title}\" foi alterado para {status}.",
+            link: $"/support/{ticket.Id}"
+        );
 
         return (true, null);
     }
