@@ -666,4 +666,33 @@ public class AdminService
     {
         await _iotService.ClearReadings(deviceId, tenantId);
     }
+
+    public async Task<List<TicketResponseDto>> GetPendingTickets()
+    {
+        return await _context.Tickets
+            .Where(t => t.Status == TicketStatus.Open ||
+                        (t.Status == TicketStatus.InProgress &&
+                         t.Messages.OrderByDescending(m => m.CreatedAt)
+                                   .FirstOrDefault()!.IsAdminReply == false))
+            .OrderByDescending(t => t.UpdatedAt)
+            .Take(10)
+            .Select(t => new TicketResponseDto
+            {
+                Id = t.Id,
+                TenantId = t.TenantId,
+                TenantName = t.TenantName,
+                CompanyId = t.CompanyId,
+                CompanyName = t.CompanyName,
+                UserId = t.UserId,
+                UserName = t.UserName,
+                Title = t.Title,
+                Description = t.Description,
+                Status = t.Status,
+                Priority = t.Priority,
+                MessageCount = t.Messages.Count,
+                CreatedAt = t.CreatedAt,
+                UpdatedAt = t.UpdatedAt
+            })
+            .ToListAsync();
+    }
 }

@@ -285,4 +285,11 @@ public class AdminController : ControllerBase
         await _adminService.ClearIoTReadings(tenantId, deviceId);
         return Ok(new { message = "Leituras removidas com sucesso." });
     }
+
+    [HttpGet("tickets/pending")]
+    public async Task<IActionResult> GetPendingTickets()
+    {
+        var tickets = await _adminService.GetPendingTickets();
+        return Ok(tickets);
+    }
 }
