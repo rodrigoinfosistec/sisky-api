@@ -6,9 +6,9 @@ namespace SiskyApi.Tests.Shared;
 public class PermissionsConfigTests
 {
     [Fact]
-    public void Modules_ShouldHaveFiveModules()
+    public void Modules_ShouldHaveSixModules()
     {
-        PermissionsConfig.Modules.Length.ShouldBe(5);
+        PermissionsConfig.Modules.Length.ShouldBe(6);
     }
 
     [Fact]
@@ -82,6 +82,15 @@ public class PermissionsConfigTests
             parts.Length.ShouldBe(2);
             parts[0].ShouldNotBeNullOrEmpty();
             parts[1].ShouldNotBeNullOrEmpty();
+
         }
+    }
+
+    [Fact]
+    public void Modules_IoTShouldNotBeCore()
+    {
+        var iot = PermissionsConfig.Modules.FirstOrDefault(m => m.Slug == "iot");
+        iot.ShouldNotBeNull();
+        iot.IsCore.ShouldBeFalse();
     }
 }
