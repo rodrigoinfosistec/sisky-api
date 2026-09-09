@@ -110,7 +110,10 @@ builder.Services.AddHangfire(config => config
         options.UseNpgsqlConnection(
             builder.Configuration.GetConnectionString("DefaultConnection"))));
 
-builder.Services.AddHangfireServer();
+builder.Services.AddHangfireServer(options =>
+{
+    options.WorkerCount = 2;
+});
 
 builder.Services.AddHealthChecks()
     .AddNpgSql(builder.Configuration.GetConnectionString("DefaultConnection")!)
